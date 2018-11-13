@@ -1,5 +1,8 @@
 package deterministic
 
+import nondeterministic.Transducer
+import scalaz.Monoid
+
 case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
                            states: Set[Q],
                            s0: Q,
@@ -77,5 +80,17 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
     }
 
     vars.map(x => (x, _composite(m1, m2(x), List()))).toMap
+  }
+
+  /**
+    * @return nondeterministic transducer that ouput variable update functions
+    */
+  def toNondeterminTransducer : Transducer[Q, Σ,  Map[X, List[Either[X, Γ]]]]={
+    implicit def monoid: Monoid[Map[X, List[Either[X, Γ]]]] = new Monoid[Map[X, List[Either[X, Γ]]]] {
+      def append(m1: Map[X, List[Either[X, Γ]]], m2: =>Map[X, List[Either[X, Γ]]]): Map[X, List[Either[X, Γ]]] = composite(m1,m2)
+      def zero: Map[X, List[Either[X, Γ]]] = vars.map(x => (x, List(Left(x)))).toMap
+    }
+
+    Transducer(states, δ.map(x=>(x._1->(Set( (x._2, η(x._1)) )))))
   }
 }
