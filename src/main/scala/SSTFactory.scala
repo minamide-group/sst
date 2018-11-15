@@ -45,7 +45,7 @@ object SSTFactory {
       )
     ).withDefaultValue(Map())
 
-    val f = Map(q1->List(Left(x0), Left(x1))).withDefaultValue(List())
+    val f = Map(q1->List(Left(x0), Right('#'), Left(x1))).withDefaultValue(List())
     SST(Set(q0,q1,q_sink), q0, Set(x0,x1), delta, eta, f)
   }
 
