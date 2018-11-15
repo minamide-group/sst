@@ -124,14 +124,10 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
         val C = getCombined(qf, q0, rules)
         val D = getCombined(qf, qf, rules)
         concat(concat(star(union(A, concat(concat(B, star(D)), C))), B), star(D))
-
       }).foldLeft(Set.empty: Set[((Int, Int), Set[(Int, Int)])]) { (x, y) => union(x, y) }
     )
 
-    f.contains(s0) match {
-      case false => res
-      case true => res ++ Set[((Int, Int), Set[(Int, Int)])](((0, f(s0).filter(x => x.isRight).size), Set.empty))
-    }
+    if (f.contains(s0)) res ++ Set[((Int, Int), Set[(Int, Int)])](((0, f(s0).filter(x => x.isRight).size), Set.empty)) else res
   }
 
   /**
