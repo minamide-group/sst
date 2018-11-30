@@ -22,5 +22,5 @@ case class DFA[Q, Σ](
 
   def toNFA: NFA[Q, Σ] = NFA(states, s0, σ.map(x=>(x._1->(Set(x._2)))), f)
 
-  def toRegEx = toNFA.toRegEx
+  def toRegEx = toNFA.toRegExp
 }

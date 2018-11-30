@@ -1,5 +1,6 @@
 package deterministic
 
+import deterministic.SSTFactory.Variable
 import org.scalatest._
 class SST_test extends FlatSpec{
 
@@ -15,6 +16,7 @@ class SST_test extends FlatSpec{
       sb.append(chars(r.nextInt(chars.size)))
     sb.toString
   }
+
   def eval[X, Γ](expr:List[Either[X, Γ]], env:Map[X, List[Either[X, Γ]]]):List[Either[X, Γ]]={
     def _eval(expr:List[Either[X, Γ]], ret: List[Either[X, Γ]]):List[Either[X, Γ]]={
       expr match {

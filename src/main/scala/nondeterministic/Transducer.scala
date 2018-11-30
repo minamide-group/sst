@@ -5,7 +5,9 @@ import scalaz.syntax.monoid._
 
 case class Transducer[Q, Σ, Γ](
                            states: Set[Q],
-                           δ: Map[(Q, Σ), Set[(Q, Γ)]])
+                           δ: Map[(Q, Σ), Set[(Q, Γ)]],
+                           F : Set[Q]
+                              )
                          (implicit val e: Monoid[Γ]) {
 
 
@@ -19,6 +21,5 @@ case class Transducer[Q, Σ, Γ](
 
     _trans(input)(Set((q, mzero)))
   }
-
 }
 
