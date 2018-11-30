@@ -132,4 +132,30 @@ object SSTFactory {
     val f = Map(q0->List(Left(x0))).withDefaultValue(List())
     SST(Set(q0,q_sink), q0, Set(x0,x1), delta, eta, f)
   }
+
+  def getBoundedCopySST()={
+    val q0 = new State(0)
+    val q_sink = new State(-1)
+
+    val x0 = new Variable(0)
+
+    val delta = Map(
+      (q0,'a')->q0,
+      (q0,'b')->q0
+    ).withDefaultValue(q_sink)
+
+    val eta = Map(
+      (q0,'a')->Map(
+        x0->List(Left(x0))
+      ),
+      (q0,'b')->Map(
+        x0->List(Left(x0), Right('b'))
+      )
+    ).withDefaultValue(Map())
+
+    val f = Map(q0->List( Left(x0) ) ).withDefaultValue(List())
+    SST(Set(q0,q_sink), q0, Set(x0), delta, eta, f)
+  }
+
+
 }
