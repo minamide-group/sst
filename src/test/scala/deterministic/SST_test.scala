@@ -1,6 +1,5 @@
-package deterministic
+package deterministic.copyless
 
-import deterministic.SSTFactory.Variable
 import org.scalatest._
 class SST_test extends FlatSpec{
 

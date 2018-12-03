@@ -1,4 +1,4 @@
-package deterministic
+package deterministic.copyless
 
 case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
                            states: Set[Q],

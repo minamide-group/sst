@@ -1,4 +1,4 @@
-package deterministic
+package deterministic.copyless
 
 object SSTFactory {
   class State(i:Int){

@@ -1,8 +1,8 @@
 object Main extends App {
 
-  val sst = SSTFactory.getHalfSST()
+  val sst = SSTFactory.getBoundedCopySST()
 
-  sst.toSemiLinearSet.foreach(println)
+  val regex = sst.toRegExp.eval
 
-  println(sst.toRegExp.eval)
+  println(regex)
 }
