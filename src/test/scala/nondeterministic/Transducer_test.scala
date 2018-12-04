@@ -17,11 +17,12 @@ class Transducer_test extends FlatSpec{
 
     val q0 = new State(0)
 
-    val delta = Map(
-      (q0, 'a') -> Set((q0,1), (q0,2) )
-    ).withDefaultValue(Set())
+    val delta = Set(
+      (q0, 'a', q0, 1),
+      (q0, 'a', q0, 2)
+    )
 
-    val transducer1 = Transducer(Set(q0), delta, Set(q0))
+    val transducer1 = Transducer(Set(q0), Set(q0), delta, Set(q0))
 
     val resultSet = transducer1.trans("aaa".toList)(q0)
 
@@ -43,11 +44,11 @@ class Transducer_test extends FlatSpec{
 
     val q0 = new State(0)
 
-    val delta = Map(
-      (q0, 'a') -> Set((q0,"A"), (q0,"AA") )
-    ).withDefaultValue(Set())
-
-    val transducer1 = Transducer(Set(q0), delta, Set(q0))
+    val delta = Set(
+      (q0, 'a', q0, "A"),
+      (q0, 'a', q0, "AA")
+    )
+    val transducer1 = Transducer(Set(q0), Set(q0), delta, Set(q0))
 
     val resultSet = transducer1.trans("aaa".toList)(q0)
 

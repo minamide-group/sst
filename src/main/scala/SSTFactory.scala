@@ -1,6 +1,3 @@
-import deterministic.copyless.SST
-import deterministic.boundedcopy.SST
-
 object SSTFactory {
 
   class State(i:Int){
@@ -143,7 +140,8 @@ object SSTFactory {
 
     val delta = Map(
       (q0,'a')->q1,
-      (q1,'a')->q1
+      (q1,'a')->q1,
+      (q1,'b')->q0
     ).withDefaultValue(q_sink)
 
     val eta = Map(
@@ -154,12 +152,17 @@ object SSTFactory {
       (q1,'a')->Map(
         x->List(Right('a'), Left(x)),
         y->List(Left(x),Left(x))
+      ),
+      (q1,'b')->Map(
+        x->List(Right('a'), Left(x)),
+        y->List()
       )
     ).withDefaultValue(Map())
 
-    val f = Map(q1->List( Left(x), Left(y) ) ).withDefaultValue(List())
+    val f = Map(
+      q1->List( Left(x), Left(y))
+    ).withDefaultValue(List())
     deterministic.boundedcopy.SST(Set(q0, q1 ,q_sink), q0, Set(x,y), delta, eta, f)
   }
-
 
 }

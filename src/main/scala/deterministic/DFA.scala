@@ -2,6 +2,7 @@ package deterministic
 
 import nondeterministic.NFA
 
+
 case class DFA[Q, Σ](
                       states: Set[Q],
                       s0: Q,
