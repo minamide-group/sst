@@ -1,6 +1,6 @@
+
 object Main extends App {
 
-  val sst = SSTFactory.getBoundedCopySST()
-
-  println(sst.toSemiLinearSet)
+  val sst = SSTFactory.getTestSST()
+  sst.toParikhImage.foreach(println)
 }
