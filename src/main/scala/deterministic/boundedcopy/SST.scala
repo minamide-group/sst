@@ -1,7 +1,6 @@
 package deterministic.boundedcopy
 
-import deterministic.RegExpHelper
-import deterministic.RegExpHelper.CharExp
+import regex.{IntRegExp, MapRegExp}
 import scalaz.Monoid
 
 case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
@@ -68,13 +67,22 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
     _trans(input)(q)(vars.map(x => (x, List(Left(x)))).toMap) //initially m is λx.x
   }
 
-  def toIntegerTransducer: nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Int] = {
+  def toSemiLinearSet: Set[((Int, Int), Set[(Int, Int)])] = {
+    val r = IntRegExp.eval(IntRegExp.toRegExp(toIntegerTransducer)) match {
+      case x: IntRegExp.CharExp => x.c
+      case _ => Set[((Int, Int), Set[(Int, Int)])]()
+    }
+
+    if (f.contains(s0)) r ++ Set[((Int, Int), Set[(Int, Int)])](((0, f(s0).filter(x => x.isRight).size), Set.empty)) else r
+  }
+
+  private def toIntegerTransducer: nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Int] = {
 
     def h(alpha: Map[X, List[Either[X, Γ]]]): (Map[X, Map[X, Int]], Map[X, Int]) =
-      (alpha.map(x => x._1 -> x._2.filter(y => y.isLeft).map(y => y.left.get).groupBy(identity).mapValues(_.size)),
+      (alpha.mapValues(_.filter(y => y.isLeft).map(y => y.left.get).groupBy(identity).mapValues(_.size)),
         alpha.mapValues(_.count(x => x.isRight)))
 
-    val q_bottom: Int = 0
+    val q_bottom: Int = 2
 
     val delta2: Set[((Q, Map[X, Int]), Σ, Int, Int)] = δ.map(x => (x._1._1, x._1._2, x._2, h(η(x._1)))).filter(x => f.contains(x._3)).map(x => {
       val beta = x._4._1
@@ -103,10 +111,10 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
             val gamma = rule._4._2
             val q0 = rule._1
             val len = B.map(y => y._1 -> y._2 * gamma.withDefaultValue(0)(y._1)).foldLeft(0) { (p, q) => p + q._2 }
-            val BB = vars.map(x => {
+            val beta_B = vars.map(x => {
               x -> B.map(y => y._1 -> y._2 * beta.withDefaultValue(Map())(y._1).withDefaultValue(0)(x)).foldLeft(0) { (p, q) => p + q._2 }
             }).toMap
-            ((q0, BB), rule._2, len, (q1, B))
+            ((q0, beta_B), rule._2, len, (q1, B))
           })
           getStatesAndDelta1(rest ++ newRules.map(x => x._1).diff(res_states), res_states ++ newRules.map(x => x._1), res_delta ++ newRules, delta)
         case Nil => (res_states, res_delta)
@@ -116,24 +124,123 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
     val (states, delta1) = getStatesAndDelta1(delta2.map(x => x._1).toList, delta2.map(x => x._1), Set[((Q, Map[X, Int]), Σ, Int, (Q, Map[X, Int]))](), δ.map(x => (x._1._1, x._1._2, x._2, h(η(x._1)))).toSet)
 
     implicit def intMonoid: Monoid[Int] = new Monoid[Int] {
-      def append(f1: Int, f2: => Int):Int = f1 + f2
+      def append(f1: Int, f2: => Int): Int = f1 + f2
+
       def zero: Int = 0
     }
 
     nondeterministic.Transducer(
       states.map(x => Left(x): Either[(Q, Map[X, Int]), Int]) + Right(q_bottom),
       states.filter(x => x._1 == s0).map(x => Left(x): Either[(Q, Map[X, Int]), Int]),
-      delta1.map(r => ( Left(r._1): Either[(Q, Map[X, Int]), Int], r._2, Left(r._4), r._3)) ++ delta2.map(r => (Left(r._1), r._2, Right(r._4), r._3)),
+      delta1.map(r => (Left(r._1): Either[(Q, Map[X, Int]), Int], r._2, Left(r._4), r._3)) ++ delta2.map(r => (Left(r._1), r._2, Right(r._4), r._3)),
       Set[Either[(Q, Map[X, Int]), Int]](Right(q_bottom))
     )
   }
 
-  def toSemiLinearSet : Set[((Int, Int), Set[(Int, Int)])] ={
-    val r = RegExpHelper.toRegExp(toIntegerTransducer).eval match {
-      case x : CharExp => x.c
-      case _  => Set[((Int, Int), Set[(Int, Int)])]()
+  def toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = {
+    val alphabets: Set[Γ] = η.toList.flatMap(x => x._2.toList).flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet ++
+      f.flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet
+    val iToA: Map[Int, Γ] = (alphabets.toList.indices zip alphabets).toMap
+    val aToI: Map[Γ, Int] = iToA.map(x => x._2 -> x._1)
+
+    implicit def intMonoid: Monoid[Map[Int, Int]] = new Monoid[Map[Int, Int]] {
+      def append(f1: Map[Int, Int], f2: => Map[Int, Int]): Map[Int, Int] = alphabets.map(c => aToI(c) -> (f1.withDefaultValue(0)(aToI(c)) + f2.withDefaultValue(0)(aToI(c)))).toMap
+
+      def zero: Map[Int, Int] = alphabets.map(c => aToI(c) -> 0).toMap
     }
 
-    if (f.contains(s0)) r ++ Set[((Int, Int), Set[(Int, Int)])](((0, f(s0).filter(x => x.isRight).size), Set.empty)) else r
+    val trans = toMapTransducer
+    val trans1: nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Map[Int, Int]] = nondeterministic.Transducer(
+      trans.states,
+      trans.initStates,
+      trans.δ.map(r => (r._1, r._2, r._3, r._4.map(x => aToI(x._1) -> x._2))),
+      trans.F
+    )
+
+    val r: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = MapRegExp.eval(MapRegExp.toRegExp(trans1)) match {
+      case m: MapRegExp.CharExp =>
+        //m.c.foreach(println)
+        m.c.filterNot(x => x._1.isEmpty).map(x => {
+          (alphabets.map(c => c -> x._1.withDefaultValue(0)(aToI(c))).toMap,
+            x._2.filterNot(m => m.isEmpty).map(y => alphabets.map(c => c -> y.withDefaultValue(0)(aToI(c))).toMap))
+        })
+    }
+
+    if (f.contains(s0)) r ++ Set[(Map[Γ, Int], Set[Map[Γ, Int]])]((
+      alphabets.map(c => c -> f(s0).filter(x => x.isRight).map(x => x.right.get).groupBy(identity).mapValues(_.size).withDefaultValue(0)(c)).toMap
+      , Set.empty)) else r
+  }
+
+  private def toMapTransducer: nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Map[Γ, Int]] = {
+
+    val alphabets: Set[Γ] = η.toList.flatMap(x => x._2.toList).flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet ++
+      f.flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet
+
+    def h(alpha: Map[X, List[Either[X, Γ]]]): (Map[X, Map[X, Int]], Map[X, Map[Γ, Int]]) =
+      (alpha.mapValues(_.filter(y => y.isLeft).map(y => y.left.get).groupBy(identity).mapValues(_.size)),
+        alpha.mapValues(_.filter(x => x.isRight).map(x => x.right.get).groupBy(identity).mapValues(_.size)))
+
+    val q_bottom: Int = 3
+
+    val delta2: Set[((Q, Map[X, Int]), Σ, Map[Γ, Int], Int)] = δ.map(x => (x._1._1, x._1._2, x._2, h(η(x._1)))).filter(x => f.contains(x._3)).map(x => {
+      val beta = x._4._1
+      val gamma = x._4._2
+      val Bf: Map[X, Int] = f(x._3).filter(x => x.isLeft).map(x => x.left.get).groupBy(identity).mapValues(_.size)
+      val beta_B: Map[X, Int] = vars.map(x => {
+        x -> Bf.map(y => y._1 -> y._2 * beta.withDefaultValue(Map())(y._1).withDefaultValue(0)(x)).foldLeft(0) { (p, q) => p + q._2 }
+      }).toMap
+      val gamma_B: Map[Γ, Int] = alphabets.map(c => {
+        val len1: Int = f(x._3).filter(y => y.isRight).map(y => y.right.get).groupBy(identity).mapValues(_.size).withDefaultValue(0)(c)
+        val len2: Int = f(x._3).filter(y => y.isLeft).map(y => y.left.get).map(y => gamma(y).withDefaultValue(0)(c) * Bf.withDefaultValue(0)(y)).reduce(_ + _)
+        c -> (len1 + len2)
+      }).toMap
+
+      ((x._1, beta_B), x._2, gamma_B, q_bottom)
+    }).toSet
+
+    def getStatesAndDelta1(queue: List[(Q, Map[X, Int])],
+                           res_states: Set[(Q, Map[X, Int])],
+                           res_delta: Set[((Q, Map[X, Int]), Σ, Map[Γ, Int], (Q, Map[X, Int]))],
+                           delta: Set[(Q, Σ, Q, (Map[X, Map[X, Int]], Map[X, Map[Γ, Int]]))]
+                          ): (Set[(Q, Map[X, Int])], Set[((Q, Map[X, Int]), Σ, Map[Γ, Int], (Q, Map[X, Int]))]) = {
+      queue match {
+        case s :: rest =>
+          val newRules = delta.filter(r => r._3 == s._1).map(r => {
+            val q1: Q = s._1
+            val B: Map[X, Int] = s._2
+            val q0: Q = r._1
+            val beta = r._4._1
+            val gamma = r._4._2
+            val beta_B = vars.map(x => {
+              x -> B.map(y => y._1 -> y._2 * beta.withDefaultValue(Map())(y._1).withDefaultValue(0)(x)).foldLeft(0) { (p, q) => p + q._2 }
+            }).toMap
+            val gamma_B: Map[Γ, Int] = alphabets.map(c => {
+              c -> B.map(y => y._2 * gamma.withDefaultValue(Map())(y._1).withDefaultValue(0)(c)).reduce(_ + _)
+            }).toMap
+
+            ((q0, beta_B), r._2, gamma_B, (q1, B))
+          })
+
+          getStatesAndDelta1(rest ++ newRules.map(x => x._1).diff(res_states), res_states ++ newRules.map(x => x._1), res_delta ++ newRules, delta)
+        case Nil => (res_states, res_delta)
+      }
+    }
+
+    val (states, delta1) = getStatesAndDelta1(delta2.map(x => x._1).toList, delta2.map(x => x._1),
+      Set[((Q, Map[X, Int]), Σ, Map[Γ, Int], (Q, Map[X, Int]))](),
+      δ.map(x => (x._1._1, x._1._2, x._2, h(η(x._1)))).toSet)
+
+    implicit def intMonoid: Monoid[Map[Γ, Int]] = new Monoid[Map[Γ, Int]] {
+      def append(f1: Map[Γ, Int], f2: => Map[Γ, Int]): Map[Γ, Int] = alphabets.map(c => c -> (f1.withDefaultValue(0)(c) + f2.withDefaultValue(0)(c))).toMap
+
+      def zero: Map[Γ, Int] = alphabets.map(c => c -> 0).toMap
+    }
+
+    nondeterministic.Transducer(
+      states.map(x => Left(x): Either[(Q, Map[X, Int]), Int]) + Right(q_bottom),
+      states.filter(x => x._1 == s0).map(x => Left(x): Either[(Q, Map[X, Int]), Int]),
+      delta1.map(r => (Left(r._1): Either[(Q, Map[X, Int]), Int], r._2, Left(r._4), r._3)) ++ delta2.map(r => (Left(r._1), r._2, Right(r._4), r._3)),
+      Set[Either[(Q, Map[X, Int]), Int]](Right(q_bottom))
+    )
   }
 }
