@@ -1,2 +1,5 @@
 *.class
 *.log
+
+# macOS
+.DS_store
