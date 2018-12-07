@@ -76,7 +76,7 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
     if (f.contains(s0)) r ++ Set[((Int, Int), Set[(Int, Int)])](((0, f(s0).filter(x => x.isRight).size), Set.empty)) else r
   }
 
-  private def toIntegerTransducer: nondeterministic.Transducer[Either[(Q, Set[X]), Int], Σ, Int] = {
+  def toIntegerTransducer: nondeterministic.Transducer[Either[(Q, Set[X]), Int], Σ, Int] = {
 
     def h(alpha: Map[X, List[Either[X, Γ]]]): (Map[X, Set[X]], Map[X, Int]) =
       (alpha.mapValues(_.filter(x => x.isLeft).map(x => x.left.get).toSet), alpha.mapValues(_.filter(x => x.isRight).size))
@@ -139,7 +139,8 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
     )
 
     val r: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = MapRegExp.eval(MapRegExp.toRegExp(trans1)) match {
-      case m: MapRegExp.CharExp => m.c.filterNot(x => x._1.isEmpty).map(x => {
+      case m: MapRegExp.CharExp =>
+        m.c.map(x => {
         (alphabets.map(c => c -> x._1.withDefaultValue(0)(aToI(c))).toMap,
           x._2.filterNot(y => y.isEmpty).map(y => alphabets.map(c => c -> y.withDefaultValue(0)(aToI(c))).toMap))
       })
@@ -150,13 +151,14 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
       , Set.empty)) else r
   }
 
-  private def toMapTransducer: nondeterministic.Transducer[Either[(Q, Set[X]), Int], Σ, Map[Γ, Int]] = {
+  def toMapTransducer: nondeterministic.Transducer[Either[(Q, Set[X]), Int], Σ, Map[Γ, Int]] = {
 
     val alphabets: Set[Γ] = η.toList.flatMap(x => x._2.toList).flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet ++
       f.flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet
 
     def h(alpha: Map[X, List[Either[X, Γ]]]): (Map[X, Set[X]], Map[X, Map[Γ, Int]]) =
-      (alpha.mapValues(_.filter(x => x.isLeft).map(x => x.left.get).toSet), alpha.mapValues(_.filter(x => x.isRight).map(x => x.right.get).groupBy(identity).mapValues(_.size)))
+      (alpha.mapValues(_.filter(x => x.isLeft).map(x => x.left.get).toSet),
+        alpha.mapValues(_.filter(x => x.isRight).map(x => x.right.get).groupBy(identity).mapValues(_.size)))
 
     val q_bottom: Int = 1
 
