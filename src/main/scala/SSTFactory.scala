@@ -163,6 +163,7 @@ object SSTFactory {
   def getTestSST()={
     val q0 = new State(0)
     val q1 = new State(1)
+    val q2 = new State(2)
     val q_sink = new State(-1)
 
     val x = new Variable(0)
@@ -170,21 +171,30 @@ object SSTFactory {
     val delta = Map(
       (q0,'a')->q1,
       (q1,'a')->q1,
+
+      (q1,'b')->q2,
+      (q2,'b')->q2
     ).withDefaultValue(q_sink)
 
     val eta = Map(
       (q0,'a')->Map(
-        x->List(Right('a'), Left(x), Right('b'))
+        x->List(Right('a'), Left(x), Right('a'))
       ),
       (q1,'a')->Map(
-        x->List(Right('a'), Left(x), Right('b'))
+        x->List(Right('a'), Left(x), Right('a'))
+      ),
+
+      (q1,'b')->Map(
+        x->List(Right('b'), Left(x), Right('b'), Right('b'))
+      ),
+      (q2,'b')->Map(
+        x->List(Right('b'), Left(x), Right('b'), Right('b'))
       )
     ).withDefaultValue(Map())
 
     val f = Map(
-      q1->List( Left(x) ),
-      q0->List( Right('#'))
+      q2->List( Left(x) )
     )
-    deterministic.copyless.SST(Set(q0, q1 ,q_sink), q0, Set(x), delta, eta, f)
+    deterministic.boundedcopy.SST(Set(q0, q1, q2 ,q_sink), q0, Set(x), delta, eta, f)
   }
 }
