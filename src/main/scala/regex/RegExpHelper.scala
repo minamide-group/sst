@@ -6,6 +6,8 @@ trait RegExpHelper[T, Γ] {
 
   def h(a: Γ): T
 
+  def getEpsExp : RegExp
+
   def toRegExp[Q, Σ](transducer: nondeterministic.Transducer[Q, Σ, Γ]): RegExp = {
     val (states, initialStates, finialStates, delta) = (transducer.states, transducer.initStates, transducer.F, transducer.δ)
 
@@ -15,7 +17,7 @@ trait RegExpHelper[T, Γ] {
           delta.map(x => (x._1, CharExp(h(x._4)): RegExp, x._3)))
 
         if(q0==qf)
-          getCombined(q0, q0, rules)
+          rules.filter(x => x._1 == q0).filter(x => x._3 == q0).map(x => x._2).foldLeft(getEpsExp: RegExp) { (x, y) => AltExp(x, y) }
         else {
           val A = getCombined(q0, q0, rules)
           val B = getCombined(q0, qf, rules)
