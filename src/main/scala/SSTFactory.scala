@@ -197,4 +197,39 @@ object SSTFactory {
     )
     deterministic.boundedcopy.SST(Set(q0, q1, q2 ,q_sink), q0, Set(x), delta, eta, f)
   }
+
+  def getTestSST2()={
+    val q0 = new State(0)
+    val q1 = new State(1)
+    val q2 = new State(2)
+    val q3 = new State(3)
+    val q_sink = new State(-1)
+
+    val x = new Variable(0)
+
+    val delta = Map(
+      (q0,'a')->q2,
+      (q2,'a')->q3,
+      (q3,'a')->q3,
+
+      (q0,'b')->q1,
+      (q2,'b')->q1,
+      (q3,'b')->q2
+    ).withDefaultValue(q_sink)
+
+    val eta = Map(
+      (q0,'a')->Map(x->List(Right('a'), Left(x))),
+      (q2,'a')->Map(x->List(Right('a'), Left(x), Right('a'))),
+      (q3,'a')->Map(x->List(Right('a'), Right('a'), Right('a'), Left(x))),
+
+      (q0,'b')->Map(x->List()),
+      (q2,'b')->Map(x->List(Right('b'), Left(x))),
+      (q3,'b')->Map(x->List(Right('b'), Left(x), Right('b')))
+    ).withDefaultValue(Map())
+
+    val f = Map(
+      q1->List(Left(x))
+    )
+    deterministic.copyless.SST(Set(q0, q1, q2, q3, q_sink), q0, Set(x), delta, eta, f)
+  }
 }

@@ -121,8 +121,7 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
   def toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = {
     val alphabets: Set[Γ] = η.toList.flatMap(x => x._2.toList).flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet ++
       f.flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet
-    val iToA: Map[Int, Γ] = (alphabets.toList.indices zip alphabets).toMap
-    val aToI: Map[Γ, Int] = iToA.map(x => x._2 -> x._1)
+    val aToI: Map[Γ, Int] = (alphabets.toList.indices zip alphabets).toMap.map(x => x._2 -> x._1)
 
     implicit def intMonoid: Monoid[Map[Int, Int]] = new Monoid[Map[Int, Int]] {
       def append(f1: Map[Int, Int], f2: => Map[Int, Int]): Map[Int, Int] = alphabets.map(c => aToI(c) -> (f1.withDefaultValue(0)(aToI(c)) + f2.withDefaultValue(0)(aToI(c)))).toMap
@@ -141,9 +140,9 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
     val r: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = MapRegExp.eval(MapRegExp.toRegExp(trans1)) match {
       case m: MapRegExp.CharExp =>
         m.c.map(x => {
-        (alphabets.map(c => c -> x._1.withDefaultValue(0)(aToI(c))).toMap,
-          x._2.filterNot(y => y.isEmpty).map(y => alphabets.map(c => c -> y.withDefaultValue(0)(aToI(c))).toMap))
-      })
+          (alphabets.map(c => c -> x._1.withDefaultValue(0)(aToI(c))).toMap,
+            x._2.filterNot(y => y.isEmpty).map(y => alphabets.map(c => c -> y.withDefaultValue(0)(aToI(c))).toMap))
+        })
       case MapRegExp.EmptyExp => Set()
     }
 
