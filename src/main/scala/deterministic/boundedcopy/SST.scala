@@ -164,11 +164,13 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
           (alphabets.map(c => c -> x._1.withDefaultValue(0)(aToI(c))).toMap,
             x._2.filterNot(m => m.isEmpty).map(y => alphabets.map(c => c -> y.withDefaultValue(0)(aToI(c))).toMap))
         })
+      case MapRegExp.EmptyExp => Set()
     }
 
     if (f.contains(s0)) r ++ Set[(Map[Γ, Int], Set[Map[Γ, Int]])]((
       alphabets.map(c => c -> f(s0).filter(x => x.isRight).map(x => x.right.get).groupBy(identity).mapValues(_.size).withDefaultValue(0)(c)).toMap
-      , Set.empty)) else r
+      , Set.empty))
+    else r
   }
 
   def toMapTransducer: nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Map[Γ, Int]] = {
