@@ -23,7 +23,7 @@ object MapRegExp extends RegExpHelper[Set[(Map[Int, Int], Set[Map[Int, Int]])], 
       }
       case c: StarExp => {
         eval(c.r) match {
-          case EmptyExp => CharExp(Set[(Map[Int, Int], Set[Map[Int, Int]])]((Map().withDefaultValue(0), Set.empty)))
+          case EmptyExp => getEpsExp
           case m: CharExp => {
             def _star(list: List[(Map[Int, Int], Set[Map[Int, Int]])], set: Set[(Map[Int, Int], Set[Map[Int, Int]])]): Set[(Map[Int, Int], Set[Map[Int, Int]])] = {
               list match {
@@ -47,4 +47,6 @@ object MapRegExp extends RegExpHelper[Set[(Map[Int, Int], Set[Map[Int, Int]])], 
   }
 
   override def h(a: Map[Int, Int]): Set[(Map[Int, Int], Set[Map[Int, Int]])] = Set((a, Set.empty))
+
+  override def getEpsExp: MapRegExp.RegExp = CharExp(Set[(Map[Int, Int], Set[Map[Int, Int]])]((Map().withDefaultValue(0), Set.empty)))
 }
