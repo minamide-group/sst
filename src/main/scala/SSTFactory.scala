@@ -193,7 +193,7 @@ object SSTFactory {
     ).withDefaultValue(Map())
 
     val f = Map(
-      q2->List( Left(x) )
+      q2->List(Left(x))
     )
     deterministic.boundedcopy.SST(Set(q0, q1, q2 ,q_sink), q0, Set(x), delta, eta, f)
   }
