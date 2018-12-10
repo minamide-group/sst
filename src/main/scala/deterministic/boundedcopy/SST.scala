@@ -67,7 +67,7 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
     _trans(input)(q)(vars.map(x => (x, List(Left(x)))).toMap) //initially m is λx.x
   }
 
-  def toZ3Input(len_in: Int, len_out: Int): String = Z3Exp.toZ3Input(len_in, len_out, toSemiLinearSet)
+  def toZ3Input(len_in: Int, len_out: Int): String = Z3Exp.toZ3Input(Map('i' -> len_in, 'o' -> len_out), toSemiLinearSet.map(x => (Map('i' -> x._1._1, 'o' -> x._1._2), x._2.map(y => Map('i' -> y._1, 'o' -> y._2)))))
 
   def toSemiLinearSet: Set[((Int, Int), Set[(Int, Int)])] = {
     val r = IntRegExp.eval(IntRegExp.toRegExp(toIntegerTransducer)) match {
