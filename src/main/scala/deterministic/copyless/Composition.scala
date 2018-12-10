@@ -28,7 +28,7 @@ object Composition {
       queue match {
         case (q :: qs) => {
           val next: Set[Q] = alphabet.map(a => transition(q, a)).filterNot(q2 => openSet.contains(q2))
-          rec(next.toList ++ queue, openSet union next)
+          rec(next.toList ++ qs, openSet union next)
         }
         case _ => Set()
       }
@@ -96,8 +96,6 @@ object Composition {
     val etaMap = (for ((q, f) <- states; a <- alphabet) yield (((q, f), a), eta(q, f, a))).toMap
     val f1 = (for ((q, f) <- states; u <- final1(q, f)) yield ((q, f), u)).toMap
     val f2 = (for ((q, f) <- states; v <- final2(q, f)) yield ((q, f), v)).toMap
-
-
 
     val sst = SST(states, initial, vars, deltaMap, etaMap, f1)
     MonoidSST(sst, f2)
