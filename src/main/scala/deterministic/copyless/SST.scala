@@ -1,6 +1,6 @@
 package deterministic.copyless
 
-import regex.{IntRegExp, MapRegExp}
+import regex.{IntRegExp, MapRegExp, Z3Exp}
 import scalaz.Monoid
 
 case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
@@ -67,6 +67,8 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
     _trans(input)(q)(vars.map(x => (x, List(Left(x)))).toMap) //initially m is λx.x
   }
 
+  def toZ3Input(len_in: Int, len_out: Int): String = Z3Exp.toZ3Input(len_in, len_out, toSemiLinearSet)
+
   def toSemiLinearSet: Set[((Int, Int), Set[(Int, Int)])] = {
     val r = IntRegExp.eval(IntRegExp.toRegExp(toIntegerTransducer)) match {
       case x: IntRegExp.CharExp => x.c
@@ -117,6 +119,8 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
       Set[Either[(Q, Set[X]), Int]](Right(q_bottom))
     )
   }
+
+  def toZ3Input(m: Map[Γ, Int]): String = Z3Exp.toZ3Input(m, toParikhImage)
 
   def toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = {
     val alphabets: Set[Γ] = η.toList.flatMap(x => x._2.toList).flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet ++
