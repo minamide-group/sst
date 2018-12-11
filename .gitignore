@@ -14,6 +14,7 @@ project/plugins/project/
 
 # VSCode plugin 
 .ensime
+.ensime_cache
 
 # macOS
 .DS_store
