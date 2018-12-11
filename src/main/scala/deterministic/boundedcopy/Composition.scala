@@ -1,4 +1,5 @@
-package deterministic.copyless
+package deterministic.boundedcopy
+
 
 object Update {
   def hatHom[X, A](m: Map[X, List[Either[X, A]]], list: List[Either[X, A]]): List[Either[X, A]] = {
@@ -28,12 +29,15 @@ case class MonoidSST[Q, A, B, X, Y](
 }
 
 object Composition {
-
+  /**
+   * lookup all reachable states from give initial states
+   * @param initialStates initial states
+   * @param alphabet alphabet
+   * @param transition transition function
+   * @return set of reachable states
+   */
   def search[Q, A](initialStates: List[Q], alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
     def rec(queue: List[Q], openSet: Set[Q]): Set[Q] = {
-      // println(queue.size)
-      // println(openSet.size)
-      // println("---")
       queue match {
         case (q :: qs) => {
           val next: Set[Q] = alphabet.map(a => transition(q, a)).filterNot(q2 => openSet.contains(q2))
@@ -45,16 +49,26 @@ object Composition {
     rec(initialStates, initialStates.toSet)
   }
 
+  /**
+   * search with only one initial state
+   */
   def search[Q, A](initialState: Q, alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
     search(List(initialState), alphabet, transition)
   }
 
+  /**
+   * compose two SSTs
+   * @param sst1 former
+   * @param sst2 latter
+   */
   def compose[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]) = {
     val boundedness = calcBoundedness(sst2)
     convertFromMonoidSST(boundedness, composeToMonoidSST(sst1, sst2))
   }
 
-  // first step of composition
+  /**
+   * first step of composition.
+   */
   def composeToMonoidSST[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]): 
         MonoidSST[(Q1, Map[(Q2, X), Q2]), A, C, (Q2, X), Y] = {
     type Trans = Map[(Q2, X), Q2]
@@ -128,6 +142,9 @@ object Composition {
     u.collect { case Right(x) => x }
   }
 
+  /**
+   * \pi_1 in thesis
+   */
   def resolveShuffle[X, A](m: Map[X, List[Either[X, A]]]): Map[X, List[X]] = {
     m.mapValues(xas => getVariables(xas))
   }
@@ -145,6 +162,9 @@ object Composition {
     }
   }
 
+  /** 
+   * \pi_2 in thesis
+   */
   def resolveStore[X, A](vars: List[X], m: Map[X, List[Either[X, A]]])(x0: X, k0: Int): List[A] = {
     if (k0 == 0) {
       getAlphabetsUntilVariable(m(x0))
@@ -178,6 +198,9 @@ object Composition {
     row(Map().withDefaultValue(1), vars)
   }
 
+  /**
+   * \pi^{-1} in thesis
+   */
   def synthesize[X, A](vars: List[X], s: Map[X, List[X]], a: (X, Int) => List[A]): Map[X, List[Either[X, A]]] = {
     numberNthOccurence(vars, s).mapValues(row =>
       row.flatMap(xk => xk match {
@@ -187,15 +210,23 @@ object Composition {
     )
   }
 
+  /**
+   * there is no alphabet in definition of SST, so guess it from transition function
+   */
   def guessAlphabet[A](sst: SST[_, A, _, _]): Set[A] = sst.δ.keySet.map(_._2)
 
-  // second step of composition
+  /**
+   * second step of composition
+   */
   def convertFromMonoidSST[Q, A, B, X, Y](boundedness: Int, msst: MonoidSST[Q, A, B, X, Y]): SST[(Q, Map[X, Map[Y, List[Y]]]), A, B, (X, Y, Int)] = {
     type Shuffle = Map[Y, List[Y]]
     type UpdateM = Map[X, List[Either[X, Map[Y, List[Either[Y, B]]]]]]
     type Bone = Map[X, Shuffle]
     type Var = (X, Y, Int)
 
+    // TODO: we need ordering in variable set Y.
+    //       currently we use hashCode to sort it.
+    //       so the composition may differ depending on running environment.
     val vars2: List[Y] = msst.vars2.toList.sortBy(y => y.hashCode)
 
     def iota(b: Bone)(x: X): Map[Y, List[Either[Y, Either[Var, B]]]] = {
@@ -244,7 +275,6 @@ object Composition {
       })
     }
 
-    // there is no set of alphabet, we guess it...
     val alphabet: Set[A] = guessAlphabet(msst.sst)
     val initial = (msst.sst.s0, (for (x <- msst.sst.vars) yield (x, Update.identityShuffle(msst.vars2))).toMap)
     val states = search(initial, alphabet, (qf: (Q, Bone), a: A) => delta(qf._1, qf._2, a))
@@ -257,6 +287,10 @@ object Composition {
     SST(states, initial, vars, deltaMap, etaMap, f)
   }
 
+  /**
+   * calcualate boundedness of give SST
+   * @note this procedure may NOT halt if copyful SST was given
+   */
   def calcBoundedness[Q, A, B, X](sst: SST[Q, A, B, X]): Int = {
     // ((x, y) -> n) means var x used y for n times
     val one = (for (x <- sst.vars; y <- sst.vars) yield ((x, y), if (x == y) { 1 } else { 0 })).toMap
@@ -264,21 +298,10 @@ object Composition {
 
     def trans(qm: (Q, Map[(X, X), Int]), a: A): (Q, Map[(X, X), Int]) = {
       val (q0, m0) = qm
-      val q = sst.δ(q0, a)
-      val update = sst.η(q0, a)
-      val m = (for ((x, v) <- update; y <- sst.vars) yield ((x, y), v.collect { case Left(z) => m0(z, y)}.sum)).toMap
-
-      // println("----")
-      // println(m0)
-      // println(update)
-      // println(m)
-      // println("----")
-
-      (q, m)
+      (sst.δ(q0, a), (for ((x, v) <- sst.η(q0, a); y <- sst.vars) yield ((x, y), v.collect { case Left(z) => m0(z, y)}.sum)).toMap)
     }
 
     val reachables = search(initials, guessAlphabet(sst), trans(_, _))
-    println(reachables)
     reachables.toSeq.map { case (_, m) => sst.vars.toSeq.map(y => sst.vars.toSeq.map(x => m(x, y)).sum).max }.max
   }
 }

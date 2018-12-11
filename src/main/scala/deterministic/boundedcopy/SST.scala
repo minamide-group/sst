@@ -37,7 +37,13 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
     }
 
     val result = _process(input)(s0)(vars.map(x => (x, Seq())).toMap)
-    (f.contains(result._1), result._1, eval(f(result._1), result._2))
+
+    // strongly recommend to use option type to return output
+    if (f.contains(result._1)) {
+      (true, result._1, eval(f(result._1), result._2))
+    } else {
+      (false, result._1, Seq())
+    }
   }
 
   def trans(input: Seq[Σ])(q: Q): (Q, Map[X, List[Either[X, Γ]]]) = {
