@@ -1,41 +1,53 @@
 package deterministic.copyless
 
 object Update {
-  def composite[X, Γ](vars: Set[X], m1: Map[X, List[Either[X, Γ]]], m2: Map[X, List[Either[X, Γ]]]): Map[X, List[Either[X, Γ]]] = {
-    def _composite(m1: Map[X, List[Either[X, Γ]]], list: List[Either[X, Γ]], ret: List[Either[X, Γ]]): List[Either[X, Γ]] = {
-      list match {
-        case next :: rest =>
-          next match {
-            case Left(x) => _composite(m1, rest, ret ::: m1(x))
-            case Right(gamma) => _composite(m1, rest, ret :+ Right(gamma))
-          }
-        case _ => ret
-      }
-    }
+  def hatHom[X, A](m: Map[X, List[Either[X, A]]], list: List[Either[X, A]]): List[Either[X, A]] = {
+    list.flatMap(xa => xa match {
+      case Left(x) => m(x)
+      case Right(a) => List(Right(a))
+    })
+  }
 
-   vars.map(x => (x, _composite(m1, m2(x), List()))).toMap
+  def composite[X, Γ](vars: Set[X], m1: Map[X, List[Either[X, Γ]]], m2: Map[X, List[Either[X, Γ]]]): Map[X, List[Either[X, Γ]]] = {
+    vars.map(x => (x, hatHom(m1, m2(x)))).toMap
+  }
+
+  def identity[X, A](vars: Set[X]): Map[X, List[Either[X, A]]] = {
+    vars.map(x => (x, List(Left(x)))).toMap
+  }
+
+  def identityShuffle[X](vars: Set[X]): Map[X, List[X]] = {
+    vars.map(x => (x, List(x))).toMap
   }
 }
 
 case class MonoidSST[Q, A, B, X, Y](
   sst: SST[Q, A, Map[Y, List[Either[Y, B]]], X],
+  vars2: Set[Y],
   final2: Map[Q, List[Either[Y, B]]]) {
 }
 
 object Composition {
   def search[Q, A](initialState: Q, alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
     def rec(queue: List[Q], openSet: Set[Q]): Set[Q] = {
+      // println(queue.size)
+      // println(openSet.size)
+      // println("---")
       queue match {
         case (q :: qs) => {
           val next: Set[Q] = alphabet.map(a => transition(q, a)).filterNot(q2 => openSet.contains(q2))
           rec(next.toList ++ qs, openSet union next)
         }
-        case _ => Set()
+        case _ => openSet
       }
     }
-    rec(List(initialState), Set())
+    rec(List(initialState), Set(initialState))
   }
 
+  def compose[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]) =
+    convertFromMonoidSST(composeToMonoidSST(sst1, sst2))
+
+  // first step of composition
   def composeToMonoidSST[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]): 
         MonoidSST[(Q1, Map[(Q2, X), Q2]), A, C, (Q2, X), Y] = {
     type Trans = Map[(Q2, X), Q2]
@@ -98,6 +110,142 @@ object Composition {
     val f2 = (for ((q, f) <- states; v <- final2(q, f)) yield ((q, f), v)).toMap
 
     val sst = SST(states, initial, vars, deltaMap, etaMap, f1)
-    MonoidSST(sst, f2)
+    MonoidSST(sst, sst2.vars, f2)
+  }
+
+  def getVariables[X, A](u: List[Either[X, A]]): List[X] = {
+    u.collect { case Left(x) => x }
+  }
+
+  def getAlphabet[X, A](u: List[Either[X, A]]): List[A] = {
+    u.collect { case Right(x) => x }
+  }
+
+  def resolveShuffle[X, A](m: Map[X, List[Either[X, A]]]): Map[X, List[X]] = {
+    m.mapValues(xas => getVariables(xas))
+  }
+
+  def getAlphabetsUntilVariable[X, A](xas: List[Either[X, A]]): List[A] = getAlphabet(xas.takeWhile(_.isRight))
+  def dropLeadingAlphabets[X, A](xas: List[Either[X, A]]): List[Either[X, A]] = xas.dropWhile(_.isRight)
+
+  def findNthString[X, A](xas: List[Either[X, A]], x0: X, k0: Int): List[A] = {
+    xas match {
+      case (Left(x)::xas) if x == x0 && k0 <= 0 => getAlphabetsUntilVariable(xas)
+      case (Left(x)::xas) if x == x0            => findNthString(xas, x0, k0 - 1)
+      case (Left(x)::xas)                       => findNthString(xas, x0, k0)
+      case (Right(x)::xas)                      => findNthString(xas, x0, k0)
+      case _                                    => List()
+    }
+  }
+
+  def resolveStore[X, A](vars: List[X], m: Map[X, List[Either[X, A]]])(x0: X, k0: Int): List[A] = {
+    if (k0 == 0) {
+      getAlphabetsUntilVariable(m(x0))
+    } else {
+      findNthString(vars.flatMap(x => dropLeadingAlphabets(m(x))), x0, k0 - 1)
+    }
+  }
+
+  def numberNthOccurence[X, A](vars: List[X], s: Map[X, List[X]]): Map[X, List[Either[X, (X, Int)]]] = {
+    type Counter = Map[X, Int]
+    def inc(counter: Counter, x: X): Counter = counter.updated(x, counter(x) + 1)
+    def column(counter: Counter, xs: List[X]): (List[Either[X, (X, Int)]], Counter) = {
+      xs match {
+        case (x::xs) => {
+          val (result, counterResult) = column(inc(counter, x), xs)
+          (Left(x) :: Right((x, counter(x))) :: result, counterResult)
+        }
+        case _ => (List(), counter)
+      }
+    }
+    def row(counter: Counter, ys: List[X]): Map[X, List[Either[X, (X, Int)]]] = {
+      ys match {
+        case (y::ys) => {
+          val (result, counterRow) = column(counter, s(y))
+          row(counterRow, ys) + (y -> (Right((y, 0)) :: result))
+        }
+        case _ => Map()
+      }
+    }
+
+    row(Map().withDefaultValue(1), vars)
+  }
+
+  def synthesize[X, A](vars: List[X], s: Map[X, List[X]], a: (X, Int) => List[A]): Map[X, List[Either[X, A]]] = {
+    numberNthOccurence(vars, s).mapValues(row =>
+      row.flatMap(xk => xk match {
+        case Left(x)  => List(Left(x))
+        case Right((x, k)) => a(x, k).map(Right(_))
+      })
+    )
+  }
+
+  // second step of composition
+  def convertFromMonoidSST[Q, A, B, X, Y](msst: MonoidSST[Q, A, B, X, Y]): SST[(Q, Map[X, Map[Y, List[Y]]]), A, B, (X, Y, Int)] = {
+    type Shuffle = Map[Y, List[Y]]
+    type UpdateM = Map[X, List[Either[X, Map[Y, List[Either[Y, B]]]]]]
+    type Bone = Map[X, Shuffle]
+    type Var = (X, Y, Int)
+
+    val vars2: List[Y] = msst.vars2.toList.sortBy(y => y.hashCode)
+
+    def iota(b: Bone)(x: X): Map[Y, List[Either[Y, Either[Var, B]]]] = {
+      synthesize(vars2, b(x), (y, k) => List(Left((x, y, k))))
+    }
+    
+
+    def duplicateRight(u: List[Either[Y, B]]): List[Either[Y, Either[Var, B]]] = {
+      u.map(yb => yb match {
+        case Left(y)  => Left(y)
+        case Right(b) => Right(Right(b))
+      })
+    }
+
+    def toRightUpdate(m: Map[Y, List[Either[Y, B]]]): Map[Y, List[Either[Y, Either[Var, B]]]] = {
+      m.mapValues(row => duplicateRight(row))
+    }
+
+    def iotaHom(bone: Bone)(xms: List[Either[X, Map[Y, List[Either[Y, B]]]]]):
+      Map[Y, List[Either[Y, Either[Var, B]]]] = {
+      xms match {
+        case (Left(x)::xms) => Update.composite(msst.vars2, iota(bone)(x), iotaHom(bone)(xms))
+        case (Right(m)::xms) => Update.composite(msst.vars2, toRightUpdate(m), iotaHom(bone)(xms))
+        case _ => Update.identity(msst.vars2)
+      }
+    }
+
+    def largeDeltaPrime(bone: Bone, m: UpdateM): Bone = {
+      (for (x <- msst.sst.vars) yield (x, resolveShuffle(iotaHom(bone)(m(x))))).toMap
+    }
+
+    def largeEtaPrime(bone: Bone, m: UpdateM) = {
+      (for (x <- msst.sst.vars; y <- msst.vars2; k <- Set(0, 1))
+         yield ((x, y, k), resolveStore(vars2, iotaHom(bone)(m(x)))(y, k))).toMap
+    }
+
+    def delta(q: Q, b: Bone, a: A): (Q, Bone) = (msst.sst.δ(q, a), largeDeltaPrime(b, msst.sst.η(q, a)))
+    def eta(q: Q, b: Bone, a: A) = largeEtaPrime(b, msst.sst.η(q, a))
+
+    def final0(q: Q, b: Bone) = {
+      msst.sst.f.get(q).flatMap(u => {
+        msst.final2.get(q).map(v => {
+          val m = iotaHom(b)(u)
+          getAlphabet(Update.hatHom(m, duplicateRight(v)))
+        })
+      })
+    }
+
+    // there is no set of alphabet, we guess it...
+    val alphabet: Set[A] = msst.sst.δ.keySet.map(_._2)
+    val initial = (msst.sst.s0, (for (x <- msst.sst.vars) yield (x, Update.identityShuffle(msst.vars2))).toMap)
+    val states = search(initial, alphabet, (qf: (Q, Bone), a: A) => delta(qf._1, qf._2, a))
+
+    // TODO: need boundedness to compute set of variables. it's dummy
+    val vars = for (x <- msst.sst.vars; y <- msst.vars2; k <- Set(0, 1)) yield (x, y, k)
+    val deltaMap = (for ((q, f) <- states; a <- alphabet) yield (((q, f), a), delta(q, f, a))).toMap
+    val etaMap = (for ((q, f) <- states; a <- alphabet) yield (((q, f), a), eta(q, f, a))).toMap
+    val f = (for ((q, f) <- states; u <- final0(q, f)) yield ((q, f), u)).toMap
+
+    SST(states, initial, vars, deltaMap, etaMap, f)
   }
 }

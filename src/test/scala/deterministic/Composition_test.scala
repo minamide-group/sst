@@ -8,6 +8,28 @@ class Composition_test extends FlatSpec{
   val sst3 = SSTFactory.getDeletionSST()
   val sst4 = SSTFactory.getCPSST()
 
+  val rev = {
+    val q0 = 0
+    val x0 = 'x'
+
+    val delta = Map(
+      (q0,'a')->q0,
+      (q0,'b')->q0,
+    )
+
+    val eta = Map(
+      (q0,'a')->Map(
+        x0->List(Right('a'), Left(x0))
+      ),
+      (q0,'b')->Map(
+        x0->List(Right('b'),Left(x0))
+      )
+    )
+
+    val f = Map(q0->List(Left(x0)))
+    SST(Set(q0), q0, Set(x0), delta, eta, f)
+  }
+
   // def getRandomString(length: Int, chars: List[Char]):String = {
   //   val r = new scala.util.Random
   //   val sb = new StringBuilder
@@ -38,20 +60,33 @@ class Composition_test extends FlatSpec{
     Composition.composeToMonoidSST(sst4, sst1)    
   }
 
-  // "sst1.process" should "output w w_reverse" in {
-  //   val r = new scala.util.Random
-  //   for(_ <-0 to 100){
-  //     val length = r.nextInt(1000)+1
-  //     val str = getRandomString(length,List('a','b'))
-  //     val ret1 = sst1.process(str)
-  //     assert(ret1._1==true)
-  //     assert(ret1._3.mkString == str+str.reverse)
-  //   }
-  //   val ret2 = sst1.process("abc")
-  //   assert(ret2._1==false)
-  //   val ret3 = sst1.process("")
-  //   assert(ret3._1==false)
-  // }
+
+  def inspectSST[Q, A, B, X](sst: SST[Q, A, B, X]) {
+    println(sst.states.size, "states: ", sst.states)
+    println(sst.vars.size, "vars:   ", sst.vars)
+    println(sst.δ.size, "delta:  ", sst.δ)
+    println(sst.η.size, "eta:    ", sst.η)
+    println(sst.f.size, "F:      ", sst.f)
+  }
+
+  def inspectMonoidSST[Q, A, B, X, Y](msst: MonoidSST[Q, A, B, X, Y]) {
+    inspectSST(msst.sst)
+    println("vars2:   ", msst.vars2)
+    println("F2:      ", msst.final2)
+  }
+
+  
+  "sst1.process" should "output w w_reverse" in {
+    val input = List('a', 'b', 'b')
+    val msst = Composition.composeToMonoidSST(rev, rev)
+
+    inspectMonoidSST(msst)
+    val comp = Composition.convertFromMonoidSST(msst)
+    inspectSST(comp)
+
+    val output = comp.process(input)
+    assert(output._3.mkString == "abb")
+  }
 
   // "sst1.trans" should "output function" in{
   //   val r = new scala.util.Random
