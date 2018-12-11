@@ -28,7 +28,8 @@ case class MonoidSST[Q, A, B, X, Y](
 }
 
 object Composition {
-  def search[Q, A](initialState: Q, alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
+
+  def search[Q, A](initialStates: List[Q], alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
     def rec(queue: List[Q], openSet: Set[Q]): Set[Q] = {
       // println(queue.size)
       // println(openSet.size)
@@ -41,11 +42,17 @@ object Composition {
         case _ => openSet
       }
     }
-    rec(List(initialState), Set(initialState))
+    rec(initialStates, initialStates.toSet)
   }
 
-  def compose[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]) =
-    convertFromMonoidSST(composeToMonoidSST(sst1, sst2))
+  def search[Q, A](initialState: Q, alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
+    search(List(initialState), alphabet, transition)
+  }
+
+  def compose[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]) = {
+    val boundedness = calcBoundedness(sst2)
+    convertFromMonoidSST(boundedness, composeToMonoidSST(sst1, sst2))
+  }
 
   // first step of composition
   def composeToMonoidSST[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]): 
@@ -180,8 +187,10 @@ object Composition {
     )
   }
 
+  def guessAlphabet[A](sst: SST[_, A, _, _]): Set[A] = sst.δ.keySet.map(_._2)
+
   // second step of composition
-  def convertFromMonoidSST[Q, A, B, X, Y](msst: MonoidSST[Q, A, B, X, Y]): SST[(Q, Map[X, Map[Y, List[Y]]]), A, B, (X, Y, Int)] = {
+  def convertFromMonoidSST[Q, A, B, X, Y](boundedness: Int, msst: MonoidSST[Q, A, B, X, Y]): SST[(Q, Map[X, Map[Y, List[Y]]]), A, B, (X, Y, Int)] = {
     type Shuffle = Map[Y, List[Y]]
     type UpdateM = Map[X, List[Either[X, Map[Y, List[Either[Y, B]]]]]]
     type Bone = Map[X, Shuffle]
@@ -219,7 +228,7 @@ object Composition {
     }
 
     def largeEtaPrime(bone: Bone, m: UpdateM) = {
-      (for (x <- msst.sst.vars; y <- msst.vars2; k <- Set(0, 1))
+      (for (x <- msst.sst.vars; y <- msst.vars2; k <- 0 to boundedness)
          yield ((x, y, k), resolveStore(vars2, iotaHom(bone)(m(x)))(y, k))).toMap
     }
 
@@ -236,16 +245,40 @@ object Composition {
     }
 
     // there is no set of alphabet, we guess it...
-    val alphabet: Set[A] = msst.sst.δ.keySet.map(_._2)
+    val alphabet: Set[A] = guessAlphabet(msst.sst)
     val initial = (msst.sst.s0, (for (x <- msst.sst.vars) yield (x, Update.identityShuffle(msst.vars2))).toMap)
     val states = search(initial, alphabet, (qf: (Q, Bone), a: A) => delta(qf._1, qf._2, a))
 
-    // TODO: need boundedness to compute set of variables. it's dummy
-    val vars = for (x <- msst.sst.vars; y <- msst.vars2; k <- Set(0, 1)) yield (x, y, k)
+    val vars = for (x <- msst.sst.vars; y <- msst.vars2; k <- 0 to boundedness) yield (x, y, k)
     val deltaMap = (for ((q, f) <- states; a <- alphabet) yield (((q, f), a), delta(q, f, a))).toMap
     val etaMap = (for ((q, f) <- states; a <- alphabet) yield (((q, f), a), eta(q, f, a))).toMap
     val f = (for ((q, f) <- states; u <- final0(q, f)) yield ((q, f), u)).toMap
 
     SST(states, initial, vars, deltaMap, etaMap, f)
+  }
+
+  def calcBoundedness[Q, A, B, X](sst: SST[Q, A, B, X]): Int = {
+    // ((x, y) -> n) means var x used y for n times
+    val one = (for (x <- sst.vars; y <- sst.vars) yield ((x, y), if (x == y) { 1 } else { 0 })).toMap
+    val initials = (for (q <- sst.states) yield (q, one)).toList
+
+    def trans(qm: (Q, Map[(X, X), Int]), a: A): (Q, Map[(X, X), Int]) = {
+      val (q0, m0) = qm
+      val q = sst.δ(q0, a)
+      val update = sst.η(q0, a)
+      val m = (for ((x, v) <- update; y <- sst.vars) yield ((x, y), v.collect { case Left(z) => m0(z, y)}.sum)).toMap
+
+      // println("----")
+      // println(m0)
+      // println(update)
+      // println(m)
+      // println("----")
+
+      (q, m)
+    }
+
+    val reachables = search(initials, guessAlphabet(sst), trans(_, _))
+    println(reachables)
+    reachables.toSeq.map { case (_, m) => sst.vars.toSeq.map(y => sst.vars.toSeq.map(x => m(x, y)).sum).max }.max
   }
 }
