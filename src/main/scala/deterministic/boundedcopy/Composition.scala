@@ -1,5 +1,10 @@
 package deterministic.boundedcopy
 
+//OK:  (S1 S2) S3
+//BAD: S1 (S2 S3)
+
+//S1 S2
+//Q =
 
 object Update {
   def hatHom[X, A](m: Map[X, List[Either[X, A]]], list: List[Either[X, A]]): List[Either[X, A]] = {
@@ -199,8 +204,8 @@ object Composition {
   }
 
   /**
-   * \pi^{-1} in thesis
-   */
+   * \pi{-1} in thesis
+    */
   def synthesize[X, A](vars: List[X], s: Map[X, List[X]], a: (X, Int) => List[A]): Map[X, List[Either[X, A]]] = {
     numberNthOccurence(vars, s).mapValues(row =>
       row.flatMap(xk => xk match {

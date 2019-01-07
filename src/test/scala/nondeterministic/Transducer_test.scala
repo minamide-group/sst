@@ -37,7 +37,7 @@ class Transducer_test extends FlatSpec{
   }
 
   "transducer on String" should "transfer" in {
-    implicit def intMonoid: Monoid[String] = new Monoid[String] {
+    implicit def strMonoid: Monoid[String] = new Monoid[String] {
       def append(f1: String, f2: => String):String = f1 + f2
       def zero: String = ""
     }

@@ -1,10 +1,11 @@
-package transducer
+package deterministic
 
 import scalaz.Monoid
 import scalaz.syntax.monoid._
 
 case class Transducer[Q, Σ, Γ](
                                 states: Set[Q],
+                                initialStates : Q,
                                 δ: Map[(Q, Σ), Q],
                                 η: Map[(Q, Σ), Γ],
                                 F: Set[Q]

@@ -124,7 +124,10 @@ object SSTFactory {
         x0->List(Left(x0), Left(x1)),
         x1->List()
       )
-    ).withDefaultValue(Map())
+    ).withDefaultValue(Map(
+      x0->List(),
+      x1->List()
+    ))
 
     val f = Map(q0->List(Left(x0))).withDefaultValue(List())
     SST(Set(q0,q_sink), q0, Set(x0,x1), delta, eta, f)
