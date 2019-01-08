@@ -1,3 +1,3 @@
 package constraint.vars
 
-case class SST_State(id0 : Int, id1 : Int){override def toString: String = "q"+id0+"_"+id1}
+case class SST_State(id : Int, name : String){override def toString: String = "q"+id+"_"+name}

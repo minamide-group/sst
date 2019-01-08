@@ -66,9 +66,14 @@ object Composition {
    * @param sst1 former
    * @param sst2 latter
    */
-  def compose[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]) = {
+  def compose[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]):
+  SST[((Q1,Map[(Q2,X),Q2]), Map[(Q2,X),Map[Y,List[Y]]]),
+    A,
+    C,
+    ((Q2,X),Y,Int)] = {
     val boundedness = calcBoundedness(sst2)
-    convertFromMonoidSST(boundedness, composeToMonoidSST(sst1, sst2))
+    val monoidSST: MonoidSST[(Q1, Map[(Q2, X), Q2]), A, C, (Q2, X), Y] = composeToMonoidSST(sst1, sst2)
+    convertFromMonoidSST(boundedness, monoidSST)
   }
 
   /**
@@ -303,7 +308,7 @@ object Composition {
 
     def trans(qm: (Q, Map[(X, X), Int]), a: A): (Q, Map[(X, X), Int]) = {
       val (q0, m0) = qm
-      (sst.δ(q0, a), (for ((x, v) <- sst.η(q0, a); y <- sst.vars) yield ((x, y), v.collect { case Left(z) => m0(z, y)}.sum)).toMap)
+      (sst.δ(q0, a), (for ((x, v) <- sst.η(q0, a); y <- sst.vars) yield ((x, y), v.collect { case Left(z) => m0(z, y)}.sum)))
     }
 
     val reachables = search(initials, guessAlphabet(sst), trans(_, _))

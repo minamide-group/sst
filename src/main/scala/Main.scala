@@ -1,39 +1,63 @@
-import constraint.Builder
+import constraint.regular.RegCons
+import constraint.{Builder, relational}
 import constraint.relational._
 import constraint.vars._
-import nondeterministic.NFA
+import deterministic.DFA
+import deterministic.boundedcopy.SST
 
 
 object Main extends App {
 
-  val nfa1= NFA(
-    Set(NFAState(0), NFAState(1), NFAState(2)),
-    NFAState(0),
+  def printSST[S, A, B, X](s : SST[S, A, B, X]): Unit ={
+    println("--------start----------")
+    //println(s.states)
+    println(s.states.size)
+    println("----------")
+    //println(s.s0)
+    println("----------")
+    //println(s.vars)
+    println(s.vars.size)
+    println("----------")
+    println(s.f)
+    println("----------")
+    //s.δ.foreach(println)
+    println(s.δ.size)
+    println("----------")
+    //s.η.foreach(println)
+    println(s.η.size)
+    println("----------")
+  }
+
+  val dfa1= DFA(
+    Set(FAState(0), FAState(1), FAState(2)),
+    FAState(0),
     Map(
-      (NFAState(0),'a') -> Set(NFAState(1)),
-      (NFAState(1),'b') -> Set(NFAState(2)),
-      (NFAState(2),'a') -> Set(NFAState(0))
+      (FAState(0),'a') -> FAState(1),
+      (FAState(1),'b') -> FAState(2),
+      (FAState(2),'a') -> FAState(0)
     ),
-    Set(NFAState(2)))
-  val builder = Builder[Int, Char](Set('a', 'b'), '#')
+    Set(FAState(2)))
 
-  val map : Map[StringVariable, NFA[NFAState, Char]] = Map(
-    StringVariable(1)-> nfa1
+  val builder = Builder[Char](Set('a', 'b'), '#')
+
+
+  val list = List(
+    Concatenation(StringVariable(2), StringVariable(1), StringVariable(0)),
+    Concatenation(StringVariable(3), StringVariable(2), StringVariable(0)),
+    Concatenation(StringVariable(4), StringVariable(1), StringVariable(2)),
+    Concatenation(StringVariable(5), StringVariable(1), StringVariable(2)),
+    //Concatenation(StringVariable(6), StringVariable(1), StringVariable(2)),
+    //Concatenation(StringVariable(7), StringVariable(1), StringVariable(2)),
+    //Concatenation(StringVariable(8), StringVariable(1), StringVariable(2))
   )
-  val sst = builder.regularToSST(3, map)
 
+  val set = Set[RegCons[FAState, Char]](
+    //RegCons(StringVariable(1), dfa1)
+  )
 
+  val sst = builder.constraintsToSST(list, set)
 
-  println(sst.states)
-  println("-------")
-  println(sst.s0)
-  println("-------")
-  println(sst.vars)
-  println("-------")
-  println(sst.f)
-  println("-------")
-  sst.δ.foreach(println)
-  println("-------")
-  sst.η.foreach(println)
-  println("-------")
+  printSST(sst)
+
+  println(sst.process("aa#bb#"))
 }
