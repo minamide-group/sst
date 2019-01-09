@@ -2,8 +2,9 @@ import constraint.regular.RegCons
 import constraint.{Builder, relational}
 import constraint.relational._
 import constraint.vars._
-import deterministic.DFA
+import deterministic.{DFA, Transducer}
 import deterministic.boundedcopy.SST
+import scalaz.Monoid
 
 
 object Main extends App {
@@ -40,12 +41,34 @@ object Main extends App {
 
   val builder = Builder[Char](Set('a', 'b'), '#')
 
+  implicit def strMonoid: Monoid[List[Char]] = new Monoid[List[Char]] {
+    def append(f1: List[Char], f2: => List[Char]):List[Char] = f1 ::: f2
+    def zero: List[Char] = List()
+  }
+
+  val trans = Transducer(Set(
+    TransState(0), TransState(1)),
+    TransState(0),
+    Map(
+      (TransState(0), 'a') -> TransState(1),
+      (TransState(0), 'b') -> TransState(1),
+      (TransState(1), 'a') -> TransState(0),
+      (TransState(1), 'b') -> TransState(0)
+    ),
+    Map(
+      (TransState(0), 'a') -> List('a'),
+      (TransState(0), 'b') -> List('b'),
+      (TransState(1), 'a') -> List(),
+      (TransState(1), 'b') -> List()
+    ),
+    Set(TransState(0), TransState(1))
+  )
 
   val list = List(
     Concatenation(StringVariable(2), StringVariable(1), StringVariable(0)),
-    Concatenation(StringVariable(3), StringVariable(2), StringVariable(0)),
+    TransducerConstraint(StringVariable(3), trans, StringVariable(2)),
     Concatenation(StringVariable(4), StringVariable(1), StringVariable(2)),
-    Concatenation(StringVariable(5), StringVariable(1), StringVariable(2)),
+    //Concatenation(StringVariable(5), StringVariable(1), StringVariable(2)),
     //Concatenation(StringVariable(6), StringVariable(1), StringVariable(2)),
     //Concatenation(StringVariable(7), StringVariable(1), StringVariable(2)),
     //Concatenation(StringVariable(8), StringVariable(1), StringVariable(2))
@@ -59,5 +82,5 @@ object Main extends App {
 
   printSST(sst)
 
-  println(sst.process("aa#bb#"))
+  println(sst.process("aba#bb#"))
 }
