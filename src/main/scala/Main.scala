@@ -75,12 +75,12 @@ object Main extends App {
   )
 
   val set = Set[RegCons[FAState, Char]](
-    //RegCons(StringVariable(1), dfa1)
+    //RegCons(StringVariable(0), dfa1)
   )
 
   val sst = builder.constraintsToSST(list, set)
 
   printSST(sst)
 
-  println(sst.process("aba#bb#"))
+  println(sst.process("ab#bb#"))
 }

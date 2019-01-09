@@ -161,7 +161,7 @@ case class Builder[Σ](alphabets: Set[Σ],
 
     val sink = SST_State(num, sstName)
 
-    SST(states.filter(i=>i!=idx).toSet ++ transToSST.map(x => x._2).toSet + sink,
+    SST(states.filter(s=> s.id!=idx ).toSet ++ transToSST.map(x => x._2).toSet + sink,
       s0,
       vars.toSet,
       delta.withDefaultValue(sink),
