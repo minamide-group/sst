@@ -10,7 +10,7 @@ case class Builder[Σ](alphabets: Set[Σ],
                       split: Σ) {
 
   def constraintsToSST(list: List[RelCons], set: Set[RegCons[FAState, Σ]]): SST[SST_State, Σ, Σ, SST_Var] = {
-
+    //(S1 S2) S3
     def _compose(num: Int, sst: SST[SST_State, Σ, Σ, SST_Var], list: List[SST[SST_State, Σ, Σ, SST_Var]]): SST[SST_State, Σ, Σ, SST_Var] = {
       list match {
         case Nil => sst
@@ -28,6 +28,25 @@ case class Builder[Σ](alphabets: Set[Σ],
       sstList(0)
     else
       _compose(1, rename(0, Composition.compose(sstList(0), sstList(1))), sstList.drop(2))
+
+    //S1(S2 S3)
+    //    def _compose(num: Int, sst: SST[SST_State, Σ, Σ, SST_Var], list: List[SST[SST_State, Σ, Σ, SST_Var]]): SST[SST_State, Σ, Σ, SST_Var] = {
+    //      list match {
+    //        case Nil => sst
+    //        case e :: rest => _compose(num + 1, rename(num, Composition.compose(e, sst)), rest)
+    //      }
+    //    }
+    //
+    //    val sstList: List[SST[SST_State, Σ, Σ, SST_Var]] =
+    //      if (set.size > 0)
+    //        list.map(cons => constraintToSST(cons)) ::: List(regularToSST(list.last.getLeftIdx() + 1, set.map(cons => cons.x -> cons.R).toMap))
+    //      else
+    //        list.map(cons => constraintToSST(cons))
+    //
+    //    if (sstList.size == 1)
+    //      sstList(0)
+    //    else
+    //      _compose(1, rename(0, Composition.compose(sstList(sstList.size-2), sstList(sstList.size-1))), sstList.dropRight(2).reverse)
   }
 
   def constraintToSST(cons: RelCons): SST[SST_State, Σ, Σ, SST_Var] = {
@@ -161,7 +180,7 @@ case class Builder[Σ](alphabets: Set[Σ],
 
     val sink = SST_State(num, sstName)
 
-    SST(states.filter(s=> s.id!=idx ).toSet ++ transToSST.map(x => x._2).toSet + sink,
+    SST(states.filter(s => s.id != idx).toSet ++ transToSST.map(x => x._2).toSet + sink,
       s0,
       vars.toSet,
       delta.withDefaultValue(sink),
@@ -169,7 +188,6 @@ case class Builder[Σ](alphabets: Set[Σ],
       f)
   }
 
-  //num : number of String variables
   def regularToSST(num: Int, consMap: Map[StringVariable, DFA[FAState, Σ]]): SST[SST_State, Σ, Σ, SST_Var] = {
 
     val sstName = "sst" + (num + 1)
@@ -240,18 +258,13 @@ case class Builder[Σ](alphabets: Set[Σ],
       f)
   }
 
-  private def rename(num: Int, sst: SST[((SST_State, Map[(SST_State, SST_Var), SST_State]), Map[(SST_State, SST_Var), Map[SST_Var, List[SST_Var]]]),
-    Σ,
-    Σ,
-    ((SST_State, SST_Var), SST_Var, Int)]): SST[SST_State, Σ, Σ, SST_Var] = {
+  private def rename[Q, X](num: Int, sst: SST[Q, Σ, Σ, X]): SST[SST_State, Σ, Σ, SST_Var] = {
 
     val sstName = "r" + num
 
-    val toNewState: Map[((SST_State, Map[(SST_State, SST_Var), SST_State]), Map[(SST_State, SST_Var), Map[SST_Var, List[SST_Var]]]), SST_State] =
-      sst.states.toList.zipWithIndex.map(x => x._1 -> SST_State(x._2, sstName)).toMap
+    val toNewState: Map[Q, SST_State] = sst.states.toList.zipWithIndex.map(x => x._1 -> SST_State(x._2, sstName)).toMap
 
-    val toNewVar: Map[((SST_State, SST_Var), SST_Var, Int), SST_Var] =
-      sst.vars.toList.zipWithIndex.map(x => x._1 -> SST_Var(x._2, sstName)).toMap
+    val toNewVar: Map[X, SST_Var] = sst.vars.toList.zipWithIndex.map(x => x._1 -> SST_Var(x._2, sstName)).toMap
 
     val states: Set[SST_State] = sst.states.map(s => toNewState(s))
 

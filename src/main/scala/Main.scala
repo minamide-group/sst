@@ -66,7 +66,8 @@ object Main extends App {
 
   val list = List(
     Concatenation(StringVariable(2), StringVariable(1), StringVariable(0)),
-    TransducerConstraint(StringVariable(3), trans, StringVariable(2)),
+    //TransducerConstraint(StringVariable(3), trans, StringVariable(2)),
+    Concatenation(StringVariable(3), StringVariable(1), StringVariable(2)),
     Concatenation(StringVariable(4), StringVariable(1), StringVariable(2)),
     //Concatenation(StringVariable(5), StringVariable(1), StringVariable(2)),
     //Concatenation(StringVariable(6), StringVariable(1), StringVariable(2)),

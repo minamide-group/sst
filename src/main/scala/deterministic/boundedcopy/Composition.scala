@@ -3,9 +3,6 @@ package deterministic.boundedcopy
 //OK:  (S1 S2) S3
 //BAD: S1 (S2 S3)
 
-//S1 S2
-//Q =
-
 object Update {
   def hatHom[X, A](m: Map[X, List[Either[X, A]]], list: List[Either[X, A]]): List[Either[X, A]] = {
     list.flatMap(xa => xa match {
@@ -66,14 +63,9 @@ object Composition {
    * @param sst1 former
    * @param sst2 latter
    */
-  def compose[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]):
-  SST[((Q1,Map[(Q2,X),Q2]), Map[(Q2,X),Map[Y,List[Y]]]),
-    A,
-    C,
-    ((Q2,X),Y,Int)] = {
-    val boundedness = calcBoundedness(sst2)
-    val monoidSST: MonoidSST[(Q1, Map[(Q2, X), Q2]), A, C, (Q2, X), Y] = composeToMonoidSST(sst1, sst2)
-    convertFromMonoidSST(boundedness, monoidSST)
+  def compose[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y])= {
+    val boundness = calcBoundedness(sst2)
+    convertFromMonoidSST(boundness, composeToMonoidSST(sst1, sst2))
   }
 
   /**
