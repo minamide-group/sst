@@ -1,6 +1,6 @@
 package regex
 
-object IntRegExp extends RegExpHelper[Set[((Int, Int), Set[(Int, Int)])], Int] {
+object IntRegExp extends AbstractRegExp[Set[((Int, Int), Set[(Int, Int)])], Int] {
   override def eval(r: IntRegExp.RegExp): RegExp = {
     r match {
       case EmptyExp => EmptyExp

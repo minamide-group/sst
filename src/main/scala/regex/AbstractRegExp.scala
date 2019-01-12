@@ -1,6 +1,6 @@
 package regex
 
-trait RegExpHelper[T, Γ] {
+trait AbstractRegExp[T, Γ] {
 
   def eval(r: RegExp): RegExp
 

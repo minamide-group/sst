@@ -38,4 +38,5 @@ object Z3Exp {
 
     declare_sentence + "\n" + assert_sentence + "\n" + end_sentence
   }
+
 }
