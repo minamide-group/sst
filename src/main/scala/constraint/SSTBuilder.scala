@@ -6,17 +6,19 @@ import constraint.vars._
 import deterministic.DFA
 import deterministic.boundedcopy.{Composition, SST}
 
-case class Builder[Σ](alphabets: Set[Σ],
-                      split: Σ) {
+case class SSTBuilder[Σ](alphabets: Set[Σ],
+                         split: Σ) {
 
   def constraintsToSST(list: List[RelCons], set: Set[RegCons[FAState, Σ]]): SST[SST_State, Σ, Σ, SST_Var] = {
-    //(S1 S2) S3
+
     def _compose(num: Int, sst: SST[SST_State, Σ, Σ, SST_Var], list: List[SST[SST_State, Σ, Σ, SST_Var]]): SST[SST_State, Σ, Σ, SST_Var] = {
       list match {
         case Nil => sst
-        case e :: rest => _compose(num + 1, rename(num, Composition.compose(sst, e)), rest)
+        case e :: rest => _compose(num + 1, compose0(num, sst, e), rest)
       }
     }
+
+    def compose0(num: Int, sst1: SST[SST_State, Σ, Σ, SST_Var], sst2: SST[SST_State, Σ, Σ, SST_Var]): SST[SST_State, Σ, Σ, SST_Var] = SST.trim(rename(num, Composition.compose(sst1, sst2)))
 
     val sstList: List[SST[SST_State, Σ, Σ, SST_Var]] =
       if (set.size > 0)
@@ -27,32 +29,13 @@ case class Builder[Σ](alphabets: Set[Σ],
     if (sstList.size == 1)
       sstList(0)
     else
-      _compose(1, rename(0, Composition.compose(sstList(0), sstList(1))), sstList.drop(2))
-
-    //S1(S2 S3)
-    //    def _compose(num: Int, sst: SST[SST_State, Σ, Σ, SST_Var], list: List[SST[SST_State, Σ, Σ, SST_Var]]): SST[SST_State, Σ, Σ, SST_Var] = {
-    //      list match {
-    //        case Nil => sst
-    //        case e :: rest => _compose(num + 1, rename(num, Composition.compose(e, sst)), rest)
-    //      }
-    //    }
-    //
-    //    val sstList: List[SST[SST_State, Σ, Σ, SST_Var]] =
-    //      if (set.size > 0)
-    //        list.map(cons => constraintToSST(cons)) ::: List(regularToSST(list.last.getLeftIdx() + 1, set.map(cons => cons.x -> cons.R).toMap))
-    //      else
-    //        list.map(cons => constraintToSST(cons))
-    //
-    //    if (sstList.size == 1)
-    //      sstList(0)
-    //    else
-    //      _compose(1, rename(0, Composition.compose(sstList(sstList.size-2), sstList(sstList.size-1))), sstList.dropRight(2).reverse)
+      _compose(1, compose0(0, sstList(0), sstList(1)), sstList.drop(2))
   }
 
   def constraintToSST(cons: RelCons): SST[SST_State, Σ, Σ, SST_Var] = {
     cons match {
       case c: Concatenation => _constraintToSST0(c)
-      case t: TransducerConstraint[TransState, Σ] => _constraintToSST1(t)
+      case t: TransducerConstraint[Σ] => _constraintToSST1(t)
     }
   }
 
@@ -100,7 +83,7 @@ case class Builder[Σ](alphabets: Set[Σ],
       f)
   }
 
-  private def _constraintToSST1(cons: TransducerConstraint[TransState, Σ]): SST[SST_State, Σ, Σ, SST_Var] = {
+  private def _constraintToSST1(cons: TransducerConstraint[Σ]): SST[SST_State, Σ, Σ, SST_Var] = {
 
     val num = cons.left.id + 1
 

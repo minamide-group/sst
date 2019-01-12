@@ -3,13 +3,13 @@ package deterministic.boundedcopy
 import regex.{IntRegExp, MapRegExp, Z3Exp}
 import scalaz.Monoid
 
-case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
-                           states: Set[Q],
-                           s0: Q,
-                           vars: Set[X],
-                           δ: Map[(Q, Σ), Q],
-                           η: Map[(Q, Σ), Map[X, List[Either[X, Γ]]]],
-                           f: Map[Q, List[Either[X, Γ]]]
+case class SST[Q, Σ, Γ, X](
+                            states: Set[Q],
+                            s0: Q,
+                            vars: Set[X],
+                            δ: Map[(Q, Σ), Q],
+                            η: Map[(Q, Σ), Map[X, List[Either[X, Γ]]]],
+                            f: Map[Q, List[Either[X, Γ]]]
                           ) {
 
   def process(input: Seq[Σ]): (Boolean, Q, Seq[Γ]) = {
@@ -69,21 +69,33 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
       }
     }
 
-    _trans(input)(q)(vars.map(x => (x, List(Left(x)))).toMap) //initially m is λx.x
+    _trans(input)(q)(vars.map(x => (x, List(Left(x)))).toMap)
   }
 
-  def toZ3Input(len_in: Int, len_out: Int): String = Z3Exp.toZ3Input(Map('i' -> len_in, 'o' -> len_out), toSemiLinearSet.map(x => (Map('i' -> x._1._1, 'o' -> x._1._2), x._2.map(y => Map('i' -> y._1, 'o' -> y._2)))))
+}
 
-  def toSemiLinearSet: Set[((Int, Int), Set[(Int, Int)])] = {
-    val r = IntRegExp.eval(IntRegExp.toRegExp(toIntegerTransducer)) match {
+object SST {
+
+  def getZ3Input[Q, Σ, Γ, X](len_in: Int, len_out: Int, sst: SST[Q, Σ, Γ, X]): String = {
+    Z3Exp.toZ3Input(Map('i' -> len_in, 'o' -> len_out), getSemiLinearSet(sst).map(x => (Map('i' -> x._1._1, 'o' -> x._1._2), x._2.map(y => Map('i' -> y._1, 'o' -> y._2)))))
+  }
+
+  def getSemiLinearSet[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): Set[((Int, Int), Set[(Int, Int)])] = {
+    val r = IntRegExp.eval(IntRegExp.toRegExp(getIntegerTransducer(sst))) match {
       case x: IntRegExp.CharExp => x.c
       case _ => Set[((Int, Int), Set[(Int, Int)])]()
     }
 
-    if (f.contains(s0)) r ++ Set[((Int, Int), Set[(Int, Int)])](((0, f(s0).filter(x => x.isRight).size), Set.empty)) else r
+    val f = sst.f
+    val s0 = sst.s0
+
+    if (f.contains(s0))
+      r ++ Set[((Int, Int), Set[(Int, Int)])](((0, f(s0).filter(x => x.isRight).size), Set.empty))
+    else
+      r
   }
 
-  def toIntegerTransducer: nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Int] = {
+  def getIntegerTransducer[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Int] = {
 
     def h(alpha: Map[X, List[Either[X, Γ]]]): (Map[X, Map[X, Int]], Map[X, Int]) =
       (alpha.mapValues(_.filter(y => y.isLeft).map(y => y.left.get).groupBy(identity).mapValues(_.size)),
@@ -91,6 +103,11 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
 
     val q_bottom: Int = 2
 
+    val δ = sst.δ
+    val η = sst.η
+    val f = sst.f
+    val vars = sst.vars
+    val s0 = sst.s0
     val delta2: Set[((Q, Map[X, Int]), Σ, Int, Int)] = δ.map(x => (x._1._1, x._1._2, x._2, h(η(x._1)))).filter(x => f.contains(x._3)).map(x => {
       val beta = x._4._1
       val gamma = x._4._2
@@ -144,9 +161,12 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
     )
   }
 
-  def toZ3Input(m: Map[Γ, Int]): String = Z3Exp.toZ3Input(m, toParikhImage)
+  def getZ3Input[Q, Σ, Γ, X](m: Map[Γ, Int], sst: SST[Q, Σ, Γ, X]): String = Z3Exp.toZ3Input(m, getParikhImage(sst))
 
-  def toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = {
+  def getParikhImage[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = {
+    val η = sst.η
+    val f = sst.f
+    val s0 = sst.s0
     val alphabets: Set[Γ] = η.toList.flatMap(x => x._2.toList).flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet ++
       f.flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet
     val aToI: Map[Γ, Int] = (alphabets.toList.indices zip alphabets).toMap.map(x => x._2 -> x._1)
@@ -157,7 +177,7 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
       def zero: Map[Int, Int] = alphabets.map(c => aToI(c) -> 0).toMap
     }
 
-    val trans = toMapTransducer
+    val trans = getMapTransducer(sst)
     val trans1: nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Map[Int, Int]] = nondeterministic.Transducer(
       trans.states,
       trans.initStates,
@@ -180,8 +200,12 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
     else r
   }
 
-  def toMapTransducer: nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Map[Γ, Int]] = {
-
+  def getMapTransducer[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Map[Γ, Int]] = {
+    val η = sst.η
+    val f = sst.f
+    val δ = sst.δ
+    val vars = sst.vars
+    val s0 = sst.s0
     val alphabets: Set[Γ] = η.toList.flatMap(x => x._2.toList).flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet ++
       f.flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet
 
@@ -251,5 +275,76 @@ case class SST[Q, Σ, Γ, X](//state, input alphabet, output alphabet, variable
       delta1.map(r => (Left(r._1): Either[(Q, Map[X, Int]), Int], r._2, Left(r._4), r._3)) ++ delta2.map(r => (Left(r._1), r._2, Right(r._4), r._3)),
       Set[Either[(Q, Map[X, Int]), Int]](Right(q_bottom))
     )
+  }
+
+  def trim[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): SST[Q, Σ, Γ, X] = trimVars(trimStates(sst))
+
+  private def trimVars[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): SST[Q, Σ, Γ, X] = {
+
+    def star[X](f: X => Set[X])(v1: Set[X]): Set[X] = {
+      val v2 = v1.flatMap(f) ++ v1
+      if (v1 == v2) v1
+      else star(f)(v2)
+    }
+
+    def usedVars(sst: SST[Q, Σ, Γ, X]): Set[X] = {
+      def app(xs: Map[X, Set[X]], ys: Map[X, Set[X]]): Map[X, Set[X]] = sst.vars.map(v => (v, xs.getOrElse(v, Set()) ++ ys.getOrElse(v, Set()))).toMap
+
+      val labelx: Iterable[Map[X, Set[X]]] = sst.η.map(_._2).map {
+        _.map { case (x, y) => (x, y.collect { case Left(x) => x }.toSet) }
+      }
+      val label: X => Set[X] = labelx.foldLeft(Map[X, Set[X]]()) { (acc, i) => app(acc, i) }
+      val revlabel: Map[X, Set[X]] = sst.vars.map { x => (x, sst.vars.filter { y => label(y)(x) }) }.toMap
+      val use: Set[X] = sst.f.flatMap(_._2).collect { case Left(x) => x }.toSet
+      val nonempty: Set[X] = sst.η.toList.flatMap(_._2).filter { r => r._2.exists(_.isRight) }.map(_._1).toSet
+
+      star(label)(use).intersect(star(revlabel)(nonempty))
+    }
+
+    val new_vars = usedVars(sst)
+
+    val new_eta = sst.η.map(
+      r => r._1 -> r._2.filter(x => new_vars(x._1)).map(x => x._1 -> x._2.filter(e => (e.isRight) || (e.isLeft && new_vars(e.left.get))))
+    ).withDefaultValue(new_vars.map(x => x -> List()).toMap.withDefaultValue(List()))
+
+    val new_f = sst.f.map(t => t._1 -> t._2.filter(e => (e.isRight) || (e.isLeft && new_vars(e.left.get))))
+
+    SST(sst.states, sst.s0, new_vars, sst.δ, new_eta, new_f)
+  }
+
+  private def trimStates[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): SST[Q, Σ, Γ, X] = {
+
+    def star(set: Set[Q], f: Map[Q, Set[Q]]): Set[Q] = {
+      val newStates = set.flatMap(q => f(q)).filterNot(q => set(q))
+      if (newStates.isEmpty) set
+      else star(set ++ newStates, f)
+    }
+
+    val func: Map[Q, Set[Q]] = sst.δ.toSet.map((r: ((Q, Σ), Q)) => (r._1._1, r._2)).groupBy(r => r._1: Q).map(r => r._1 -> r._2.map(_._2))
+
+    val new_states: Set[Q] = star(Set(sst.s0), func)
+
+    val new_delta = sst.δ.filter(r => new_states(r._1._1)).filter(r => new_states(r._2))
+
+    val new_eta = sst.η.filter(r => new_delta.contains(r._1))
+
+    val new_f = sst.f.filter(r => new_states(r._1))
+
+    SST(new_states, sst.s0, sst.vars, new_delta, new_eta, new_f)
+  }
+
+  def print[Q, Σ, Γ, X](s : SST[Q, Σ, Γ, X]): Unit ={
+    println("--------start----------")
+    println("states num: " + s.states.size)
+    println("----------")
+    println("init state: " + s.s0)
+    println("----------")
+    println("vars num: " + s.vars.size)
+    println("----------")
+    println("output function length: " + s.f.map(x=>x._2.size))
+    println("----------")
+    println("delta size: " + s.δ.size)
+    println("---------end-----------")
+
   }
 }

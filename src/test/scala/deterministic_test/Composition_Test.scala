@@ -1,10 +1,9 @@
-package deterministic
+package deterministic_test
 
 import deterministic.boundedcopy.{Composition, MonoidSST, SST}
-import org.scalatest._
+import org.scalatest.FlatSpec
 
-
-class Composition_test extends FlatSpec {
+class Composition_Test extends FlatSpec {
   val rev = {
     val q0 = 0
     val x0 = 'x'
@@ -151,13 +150,10 @@ class Composition_test extends FlatSpec {
     SST(Set(q0, q1), q0, Set('x', 'y', 'z'), delta, eta, f)
   }
 
-
-  def getRandomString(length: Int, chars: List[Char]): Seq[Char] = {
-    val r = new scala.util.Random
-    val sb = new StringBuilder
-    for (_ <- 0 to length - 1)
-      sb.append(chars(r.nextInt(chars.size)))
-    sb.toSeq
+  def inspectMonoidSST[Q, A, B, X, Y](msst: MonoidSST[Q, A, B, X, Y]) {
+    inspectSST(msst.sst)
+    println("vars2:   ", msst.vars2)
+    println("F2:      ", msst.final2)
   }
 
   def inspectSST[Q, A, B, X](sst: SST[Q, A, B, X]) {
@@ -166,20 +162,6 @@ class Composition_test extends FlatSpec {
     println(sst.δ.size, "delta:  ", sst.δ)
     println(sst.η.size, "eta:    ", sst.η)
     println(sst.f.size, "F:      ", sst.f)
-  }
-
-  def inspectMonoidSST[Q, A, B, X, Y](msst: MonoidSST[Q, A, B, X, Y]) {
-    inspectSST(msst.sst)
-    println("vars2:   ", msst.vars2)
-    println("F2:      ", msst.final2)
-  }
-
-  def resultToOption[Q, A](result: (Boolean, Q, Seq[A])): Option[Seq[A]] = {
-    if (result._1) {
-      Some(result._3)
-    } else {
-      None
-    }
   }
 
   def testComposition[Q, R, X, Y](sst1: SST[Q, Char, Char, X], sst2: SST[R, Char, Char, Y]) {
@@ -192,6 +174,22 @@ class Composition_test extends FlatSpec {
       val expected = resultToOption(sst1.process(input)) flatMap (x => resultToOption(sst2.process(x)))
 
       assert(result.mkString == expected.mkString)
+    }
+  }
+
+  def getRandomString(length: Int, chars: List[Char]): Seq[Char] = {
+    val r = new scala.util.Random
+    val sb = new StringBuilder
+    for (_ <- 0 to length - 1)
+      sb.append(chars(r.nextInt(chars.size)))
+    sb.toSeq
+  }
+
+  def resultToOption[Q, A](result: (Boolean, Q, Seq[A])): Option[Seq[A]] = {
+    if (result._1) {
+      Some(result._3)
+    } else {
+      None
     }
   }
 
