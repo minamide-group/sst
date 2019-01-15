@@ -1,20 +1,23 @@
 package constraint_test
 
 import constraint.SSTBuilder
+import constraint.integer.term._
+import constraint.integer._
 import constraint.regular.RegCons
-import constraint.relational.{Concatenation, RelCons, TransducerConstraint}
-import constraint.vars.{StringVariable}
+import constraint.relational._
+import constraint.vars._
 import deterministic.boundedcopy.SST
-import deterministic.factories.{DFAFactory, TransducerFactory}
+import deterministic.factories._
 import org.scalatest.FlatSpec
+import regex.Z3Exp
 
-class ConstraintsToSST_Test extends FlatSpec {
+class ConstraintsToSST_Int_Test  extends FlatSpec {
 
   val dfa1 = DFAFactory.getDFA0
 
   val trans = TransducerFactory.getHalfTransducer
 
-  val list = List(
+  val relCons = List(
     Concatenation(StringVariable(2), StringVariable(1), StringVariable(0)),
     TransducerConstraint(StringVariable(3), trans, StringVariable(2)),
     //Concatenation(StringVariable(3), StringVariable(1), StringVariable(2)),
@@ -22,8 +25,13 @@ class ConstraintsToSST_Test extends FlatSpec {
     Concatenation(StringVariable(5), StringVariable(1), StringVariable(2)),
   )
 
-  val set = Set[RegCons[Char]](
-    RegCons(StringVariable(0), dfa1)
+  val regCons = Set[RegCons[Char]](
+    //RegCons(StringVariable(0), dfa1)
+  )
+
+  val intCons = IntAnd(
+    IntEqual(Length(StringVariable(4)), IntConst(5)),
+    IntEqual(Length(StringVariable(5)), IntConst(5))
   )
 
   def myAssert(strs: List[String], rels: List[RelCons], regs: Set[RegCons[Char]]): Unit = {
@@ -41,12 +49,14 @@ class ConstraintsToSST_Test extends FlatSpec {
 
   "sst builder" should "runs" in {
     val builder = SSTBuilder[Char](Set('a', 'b'), '#')
-    val sst = builder.constraintsToSST(list, set)
+    val sst = builder.constraintsToSST_Int(relCons, regCons)
     SST.print(sst)
 
-    val input = List("ab", "bba")
-    val result = sst.process(input.mkString("#") + "#")
-    if (result._1)
-      myAssert(result._3.mkString.split("#").toList, list, set)
+    val pi = SST.getParikhImage(sst)
+    pi.foreach(println)
+
+    val z3 = Z3Exp.toZ3Input(intCons, pi)
+
+    println(z3)
   }
 }

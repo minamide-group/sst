@@ -1,4 +1,4 @@
-package deterministic
+package deterministic.factories
 
 import constraint.vars.{SST_State, SST_Var}
 import deterministic.boundedcopy.SST

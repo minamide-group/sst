@@ -1,11 +1,13 @@
 package deterministic_test
 
+import deterministic.factories
+import deterministic.factories.SSTFactory
 import org.scalatest.FlatSpec
 
 class SST_Test extends FlatSpec {
 
   "half sst" should "run" in {
-    val sst = deterministic.SSTFactory.getHalfSST()
+    val sst = SSTFactory.getHalfSST()
     val r = new scala.util.Random
     for (_ <- 0 to 100) {
       val length = r.nextInt(1000)
@@ -19,7 +21,7 @@ class SST_Test extends FlatSpec {
   }
 
   "half sst" should "output function" in {
-    val sst = deterministic.SSTFactory.getHalfSST()
+    val sst = factories.SSTFactory.getHalfSST()
     val r = new scala.util.Random
     for (_ <- 0 to 100) {
       val length = r.nextInt(1000) + 1

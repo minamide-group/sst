@@ -1,6 +1,6 @@
 package constraint.regular
 
-import constraint.vars.StringVariable
+import constraint.vars.{FAState, StringVariable}
 import deterministic.DFA
 
-case class RegCons[Q, Σ](x : StringVariable, R : DFA[Q, Σ])
+case class RegCons[Σ](x : StringVariable, R : DFA[FAState, Σ])

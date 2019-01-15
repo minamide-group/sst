@@ -1,3 +1,3 @@
 package constraint.integer
 
-class IntCons
+trait IntCons
