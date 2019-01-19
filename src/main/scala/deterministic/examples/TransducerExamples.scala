@@ -1,10 +1,10 @@
-package deterministic.factories
+package deterministic.examples
 
 import constraint.vars.TransState
 import deterministic.Transducer
 import scalaz.Monoid
 
-object TransducerFactory {
+object TransducerExamples {
 
   implicit def strMonoid: Monoid[List[Char]] = new Monoid[List[Char]] {
     def append(f1: List[Char], f2: => List[Char]): List[Char] = f1 ::: f2

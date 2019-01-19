@@ -1,32 +1,28 @@
 package constraint_test
 
 import constraint.SSTBuilder
-import constraint.integer.term._
 import constraint.integer._
+import constraint.integer.term._
 import constraint.regular.RegCons
 import constraint.relational._
 import constraint.vars._
 import deterministic.boundedcopy.SST
-import deterministic.factories._
+import deterministic.examples._
 import org.scalatest.FlatSpec
-import regex.Z3Exp
+import expression.Z3Exp
 
-class ConstraintsToSST_Int_Test  extends FlatSpec {
-
-  val dfa1 = DFAFactory.getDFA0
-
-  val trans = TransducerFactory.getHalfTransducer
+class ConstraintsToSST_Int_Test extends FlatSpec {
 
   val relCons = List(
-    Concatenation(StringVariable(2), StringVariable(1), StringVariable(0)),
-    TransducerConstraint(StringVariable(3), trans, StringVariable(2)),
-    //Concatenation(StringVariable(3), StringVariable(1), StringVariable(2)),
-    Concatenation(StringVariable(4), StringVariable(1), StringVariable(2)),
-    Concatenation(StringVariable(5), StringVariable(1), StringVariable(2)),
+    Concatenation(StringVariable(2), List(Left(StringVariable(1)), Left(StringVariable(0))) ),
+    //TransducerConstraint(StringVariable(3), TransducerExamples.getHalfTransducer, StringVariable(2)),
+    Concatenation(StringVariable(3), List(Left(StringVariable(1)), Left(StringVariable(2))) ),
+    Concatenation(StringVariable(4), List(Left(StringVariable(1)), Left(StringVariable(2))) ),
+    Concatenation(StringVariable(5), List(Left(StringVariable(1)), Left(StringVariable(2))) ),
   )
 
   val regCons = Set[RegCons[Char]](
-    //RegCons(StringVariable(0), dfa1)
+    RegCons(StringVariable(0), DFAExamples.getDFA1),
   )
 
   val intCons = IntAnd(
@@ -34,18 +30,6 @@ class ConstraintsToSST_Int_Test  extends FlatSpec {
     IntEqual(Length(StringVariable(5)), IntConst(5))
   )
 
-  def myAssert(strs: List[String], rels: List[RelCons], regs: Set[RegCons[Char]]): Unit = {
-    rels.foreach(r => {
-      r match {
-        case c: Concatenation => assert(strs(c.left.id) == strs(c.right1.id) + strs(c.right2.id))
-        case t: TransducerConstraint[Char] => assert(strs(t.left.id) == t.right1.trans(strs(t.right2.id).toList)(t.right1.initialStates))
-      }
-    })
-
-    regs.foreach(r => {
-      assert(r.R.process(strs(r.x.id))._1)
-    })
-  }
 
   "sst builder" should "runs" in {
     val builder = SSTBuilder[Char](Set('a', 'b'), '#')

@@ -9,17 +9,8 @@ case class DFA[Q, Σ](
                       σ: Map[(Q,Σ), Q],
                       f: Set[Q]) {
 
-  def process(input: Seq[Σ]):(Boolean, Q)={
-    val finalState = trans(input)(s0)
-    (f(finalState), finalState)
-  }
 
-  def trans(input: Seq[Σ])(q: Q): Q = {
-    input match {
-      case Seq(c, cs@_*) => trans(cs)(σ(q, c))
-      case _ => q
-    }
-  }
+  def process(input: Seq[Σ]): Boolean = toNFA.process(input)
 
-  def toNFA: NFA[Q, Σ] = NFA(states, s0, σ.map(x=>(x._1->(Set(x._2)))), f)
+  private def toNFA: NFA[Q, Σ] = NFA(states, s0, σ.map(x=>(x._1->(Set(x._2)))), f)
 }

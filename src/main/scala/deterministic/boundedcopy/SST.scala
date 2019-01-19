@@ -1,6 +1,7 @@
 package deterministic.boundedcopy
 
-import regex._
+import expression._
+import expression.regex._
 import scalaz.Monoid
 
 case class SST[Q, Σ, Γ, X](
@@ -99,12 +100,12 @@ object SST {
     )
 
     val r: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = MapRegExp.eval(MapRegExp.toRegExp(trans1)) match {
-      case m: MapRegExp.CharExp =>
+      case m: MapRegExp.CharExp1 =>
         m.c.map(x => {
           (alphabets.map(c => c -> x._1.withDefaultValue(0)(aToI(c))).toMap,
             x._2.filterNot(m => m.isEmpty).map(y => alphabets.map(c => c -> y.withDefaultValue(0)(aToI(c))).toMap))
         })
-      case MapRegExp.EmptyExp => Set()
+      case EmptyExp => Set()
     }
 
     if (f.contains(s0)) r ++ Set[(Map[Γ, Int], Set[Map[Γ, Int]])]((

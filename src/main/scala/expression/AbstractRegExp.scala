@@ -1,4 +1,6 @@
-package regex
+package expression
+
+import expression.regex._
 
 trait AbstractRegExp[T, Γ] {
 
@@ -42,17 +44,4 @@ trait AbstractRegExp[T, Γ] {
       case Nil => rules
     }
   }
-
-  trait RegExp
-
-  case class CharExp(c: T) extends RegExp
-
-  case class ConcatExp(r1: RegExp, r2: RegExp) extends RegExp
-
-  case class AltExp(r1: RegExp, r2: RegExp) extends RegExp
-
-  case class StarExp(r: RegExp) extends RegExp
-
-  case object EmptyExp extends RegExp
-
 }

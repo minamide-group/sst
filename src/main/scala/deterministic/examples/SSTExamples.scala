@@ -1,9 +1,9 @@
-package deterministic.factories
+package deterministic.examples
 
 import constraint.vars.{SST_State, SST_Var}
 import deterministic.boundedcopy.SST
 
-object SSTFactory {
+object SSTExamples {
 
   def getReverseSST() = {
     val q0 = SST_State(0, "r")

@@ -7,6 +7,7 @@ import deterministic.DFA
 import deterministic.boundedcopy.{Composition, SST}
 
 case class SSTBuilder[Σ](alphabets: Set[Σ],
+                         //assert split is not in alphabets
                          split: Σ) {
 
   def constraintsToSST(list: List[RelCons], set: Set[RegCons[Σ]]): SST[SST_State, Σ, Σ, SST_Var] = {
@@ -18,7 +19,8 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
       }
     }
 
-    def compose0(num: Int, sst1: SST[SST_State, Σ, Σ, SST_Var], sst2: SST[SST_State, Σ, Σ, SST_Var]): SST[SST_State, Σ, Σ, SST_Var] = SST.trim(rename(num, Composition.compose(sst1, sst2)))
+    def compose0(num: Int, sst1: SST[SST_State, Σ, Σ, SST_Var], sst2: SST[SST_State, Σ, Σ, SST_Var]): SST[SST_State, Σ, Σ, SST_Var] =
+      SST.trim(rename(num, Composition.compose(sst1, sst2)))
 
     val sstList: List[SST[SST_State, Σ, Σ, SST_Var]] =
       if (set.size > 0)
@@ -30,6 +32,74 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
       sstList(0)
     else
       _compose(1, compose0(0, sstList(0), sstList(1)), sstList.drop(2))
+  }
+
+  def regularToSST(num: Int, consMap: Map[StringVariable, DFA[FAState, Σ]]): SST[SST_State, Σ, Σ, SST_Var] = {
+
+    val sstName = "sst" + (num + 1)
+
+    def getTName(id: Int) = "t" + id
+
+    val states: List[SST_State] = List.range(0, num + 1).map(i => SST_State(i, sstName))
+
+    def toSSTStates(q : FAState, idx : Int) = SST_State(q.id, getTName(idx))
+
+    val statesToInit: Map[SST_State, SST_State] = states.map(s =>
+      if (consMap.contains(StringVariable(s.id))) s -> toSSTStates(consMap(StringVariable(s.id)).s0, s.id)
+      else s -> s
+    ).toMap
+
+    val statesToFinal: Map[SST_State, Set[SST_State]] = states.map(s =>
+      if (consMap.contains(StringVariable(s.id))) s -> consMap(StringVariable(s.id)).f.map( q=> toSSTStates(q, s.id))
+      else s -> Set(s)
+    ).toMap
+
+    val stateSet: Set[SST_State] = states.flatMap(s =>
+      if (consMap.contains(StringVariable(s.id))) consMap(StringVariable(s.id)).states.map(q => toSSTStates(q, s.id))
+      else Set(s)
+    ).toSet
+
+    val s0: SST_State = statesToInit(states(0))
+
+    val vars: List[SST_Var] = List.range(0, num).map(i => SST_Var(i, sstName))
+
+    val f: Map[SST_State, List[Either[SST_Var, Σ]]] = Map(
+      states(num) -> vars.foldLeft(List[Either[SST_Var, Σ]]()) { (x, y) => x ::: List(Left(y), Right(split)) }
+    )
+
+    val delta0: Map[(SST_State, Σ), SST_State] = List.range(0, num).flatMap(i =>
+      if (consMap.contains(StringVariable(i)))
+        consMap(StringVariable(i)).σ.map(r => (toSSTStates(r._1._1, i), r._1._2) -> toSSTStates(r._2, i))
+      else
+        alphabets.map(c => ((states(i), c) -> states(i)))
+    ).toMap
+
+    val delta1 = List.range(0, num).flatMap(i => statesToFinal(states(i)).map(s => (s, split) -> statesToInit(states(i + 1))).toMap)
+
+    val delta: Map[(SST_State, Σ), SST_State] = delta0 ++ delta1
+
+    val eta0: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] = List.range(0, num).flatMap(i =>
+      if (consMap.contains(StringVariable(i)))
+        consMap(StringVariable(i)).σ.map(r =>
+          (toSSTStates(r._1._1, i), r._1._2) -> vars.map(x => if (x.id == i) x -> List(Left(x), Right(r._1._2)) else x -> List(Left(x))).toMap)
+      else alphabets.map(c => (states(i), c) -> vars.map(x => if (x.id == i) x -> List(Left(x), Right(c)) else x -> List(Left(x))).toMap)
+    ).toMap
+
+    val eta1: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] = List.range(0, num).flatMap(i =>
+      statesToFinal(states(i)).map(s =>
+        (s, split) -> vars.map(x => x -> List[Either[SST_Var, Σ]](Left(x))).toMap
+      )).toMap
+
+    val eta: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] = eta0 ++ eta1
+
+    val sink = SST_State(num + 1, sstName)
+
+    SST(stateSet + sink,
+      s0,
+      vars.toSet,
+      delta.withDefaultValue(sink),
+      eta.withDefaultValue(vars.map(x => x -> List[Either[SST_Var, Σ]]()).toMap),
+      f)
   }
 
   def constraintsToSST_Int(list: List[RelCons], set: Set[RegCons[Σ]]): SST[SST_State, Σ, Int, SST_Var] = {
@@ -54,17 +124,16 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
       _compose(1, compose0(0, sstList(0), sstList(1)), sstList.drop(2))
 
     SST.trim(rename(0, Composition.compose(sst0, last)))
-
   }
 
   def constraintToSST(cons: RelCons): SST[SST_State, Σ, Σ, SST_Var] = {
     cons match {
-      case c: Concatenation => _constraintToSST0(c)
+      case c: Concatenation[Σ] => _constraintToSST0(c)
       case t: TransducerConstraint[Σ] => _constraintToSST1(t)
     }
   }
 
-  private def _constraintToSST0(cons: Concatenation): SST[SST_State, Σ, Σ, SST_Var] = {
+  private def _constraintToSST0(cons: Concatenation[Σ]): SST[SST_State, Σ, Σ, SST_Var] = {
 
     val num = cons.left.id + 1
 
@@ -94,7 +163,13 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
     val f: Map[SST_State, List[Either[SST_Var, Σ]]] = Map(
       states(num - 1) -> (
         vars.foldLeft(List[Either[SST_Var, Σ]]()) { (x, y) => x ++ List(Left(y), Right(split)) } ++
-          List(Left(vars(cons.right1.id)), Left(vars(cons.right2.id)), Right(split))
+          cons.list.flatMap(x => {
+            x match {
+              case Left(v) => List(Left(vars(v.id)))
+              case Right(str) => str.map(c => Right(c))
+            }
+          }) ++ List(Right(split))
+
         )
     )
 
@@ -196,149 +271,6 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
       f)
   }
 
-  def regularToSST(num: Int, consMap: Map[StringVariable, DFA[FAState, Σ]]): SST[SST_State, Σ, Σ, SST_Var] = {
-
-    val sstName = "sst" + (num + 1)
-
-    def getTName(id: Int) = "t" + id
-
-    val states: List[SST_State] = List.range(0, num + 1).map(i => SST_State(i, sstName))
-
-    val toSSTStates: Map[FAState, SST_State] = consMap.flatMap(r => {
-      r._2.states.map(s => s -> SST_State(s.id, getTName(r._1.id)))
-    })
-
-    val statesToInit: Map[SST_State, SST_State] = states.map(s =>
-      if (consMap.contains(StringVariable(s.id))) s -> toSSTStates(consMap(StringVariable(s.id)).s0)
-      else s -> s
-    ).toMap
-
-    val statesToFinal: Map[SST_State, Set[SST_State]] = states.map(s =>
-      if (consMap.contains(StringVariable(s.id))) s -> consMap(StringVariable(s.id)).f.map(s => toSSTStates(s))
-      else s -> Set(s)
-    ).toMap
-
-    val stateSet: Set[SST_State] = states.flatMap(s =>
-      if (consMap.contains(StringVariable(s.id))) consMap(StringVariable(s.id)).states.map(q => toSSTStates(q))
-      else Set(s)
-    ).toSet
-
-    val s0: SST_State = statesToInit(states(0))
-
-    val vars: List[SST_Var] = List.range(0, num).map(i => SST_Var(i, sstName))
-
-    val f: Map[SST_State, List[Either[SST_Var, Σ]]] = Map(
-      states(num) -> vars.foldLeft(List[Either[SST_Var, Σ]]()) { (x, y) => x ::: List(Left(y), Right(split)) }
-    )
-
-    val delta0: Map[(SST_State, Σ), SST_State] = List.range(0, num).flatMap(i =>
-      if (consMap.contains(StringVariable(i)))
-        consMap(StringVariable(i)).σ.map(r => (toSSTStates(r._1._1), r._1._2) -> toSSTStates(r._2))
-      else
-        alphabets.map(c => ((states(i), c) -> states(i)))
-    ).toMap
-
-    val delta1 = List.range(0, num).flatMap(i => statesToFinal(states(i)).map(s => (s, split) -> statesToInit(states(i + 1))).toMap)
-
-    val delta: Map[(SST_State, Σ), SST_State] = delta0 ++ delta1
-
-    val eta0: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] = List.range(0, num).flatMap(i =>
-      if (consMap.contains(StringVariable(i)))
-        consMap(StringVariable(i)).σ.map(r =>
-          (toSSTStates(r._1._1), r._1._2) -> vars.map(x => if (x.id == i) x -> List(Left(x), Right(r._1._2)) else x -> List(Left(x))).toMap)
-      else alphabets.map(c => (states(i), c) -> vars.map(x => if (x.id == i) x -> List(Left(x), Right(c)) else x -> List(Left(x))).toMap)
-    ).toMap
-
-    val eta1: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] = List.range(0, num).flatMap(i =>
-      statesToFinal(states(i)).map(s =>
-        (s, split) -> vars.map(x => x -> List[Either[SST_Var, Σ]](Left(x))).toMap
-      )).toMap
-
-    val eta: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] = eta0 ++ eta1
-
-    val sink = SST_State(num + 1, sstName)
-
-    SST(stateSet + sink,
-      s0,
-      vars.toSet,
-      delta.withDefaultValue(sink),
-      eta.withDefaultValue(vars.map(x => x -> List[Either[SST_Var, Σ]]()).toMap),
-      f)
-  }
-
-  def regularToSST_Int(num: Int, consMap: Map[StringVariable, DFA[FAState, Σ]]): SST[SST_State, Σ, Int, SST_Var] = {
-
-    val sstName = "sst" + (num + 1)
-
-    val split_out = -1
-
-    def getTName(id: Int) = "t" + id
-
-    val states: List[SST_State] = List.range(0, num + 1).map(i => SST_State(i, sstName))
-
-    val toSSTStates: Map[FAState, SST_State] = consMap.flatMap(r =>
-      r._2.states.map(s => s -> SST_State(s.id, getTName(r._1.id)))
-    )
-
-    val statesToInit: Map[SST_State, SST_State] = states.map(s =>
-      if (consMap.contains(StringVariable(s.id))) s -> toSSTStates(consMap(StringVariable(s.id)).s0)
-      else s -> s
-    ).toMap
-
-    val statesToFinal: Map[SST_State, Set[SST_State]] = states.map(s =>
-      if (consMap.contains(StringVariable(s.id))) s -> consMap(StringVariable(s.id)).f.map(s => toSSTStates(s))
-      else s -> Set(s)
-    ).toMap
-
-    val stateSet: Set[SST_State] = states.flatMap(s =>
-      if (consMap.contains(StringVariable(s.id))) consMap(StringVariable(s.id)).states.map(q => toSSTStates(q))
-      else Set(s)
-    ).toSet
-
-    val s0: SST_State = statesToInit(states(0))
-
-    val vars: List[SST_Var] = List.range(0, num).map(i => SST_Var(i, sstName))
-
-    val f: Map[SST_State, List[Either[SST_Var, Int]]] = Map(
-      states(num) -> vars.foldLeft(List[Either[SST_Var, Int]]()) { (x, y) => x ::: List(Left(y), Right(split_out)) }
-    )
-
-    val delta0: Map[(SST_State, Σ), SST_State] = List.range(0, num).flatMap(i =>
-      if (consMap.contains(StringVariable(i)))
-        consMap(StringVariable(i)).σ.map(r => (toSSTStates(r._1._1), r._1._2) -> toSSTStates(r._2))
-      else
-        alphabets.map(c => ((states(i), c) -> states(i)))
-    ).toMap
-
-    val delta1 = List.range(0, num).flatMap(i => statesToFinal(states(i)).map(s => (s, split) -> statesToInit(states(i + 1))).toMap)
-
-    val delta: Map[(SST_State, Σ), SST_State] = delta0 ++ delta1
-
-    val eta0: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Int]]]] = List.range(0, num).flatMap(i =>
-      if (consMap.contains(StringVariable(i)))
-        consMap(StringVariable(i)).σ.map(r =>
-          (toSSTStates(r._1._1), r._1._2) -> vars.map(x => if (x.id == i) x -> List(Left(x), Right(i)) else x -> List(Left(x))).toMap)
-      else
-        alphabets.map(c => (states(i), c) -> vars.map(x => if (x.id == i) x -> List(Left(x), Right(i)) else x -> List(Left(x))).toMap)
-    ).toMap
-
-    val eta1: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Int]]]] = List.range(0, num).flatMap(i =>
-      statesToFinal(states(i)).map(s =>
-        (s, split) -> vars.map(x => x -> List[Either[SST_Var, Int]](Left(x))).toMap
-      )).toMap
-
-    val eta: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Int]]]] = eta0 ++ eta1
-
-    val sink = SST_State(num + 1, sstName)
-
-    SST(stateSet + sink,
-      s0,
-      vars.toSet,
-      delta.withDefaultValue(sink),
-      eta.withDefaultValue(vars.map(x => x -> List[Either[SST_Var, Int]]()).toMap),
-      f)
-  }
-
   private def rename[Q, A, B, X](num: Int, sst: SST[Q, A, B, X]): SST[SST_State, A, B, SST_Var] = {
 
     val sstName = "r" + num
@@ -370,6 +302,77 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
     )
 
     SST(states, s0, vars, delta, eta, f)
+  }
+
+  def regularToSST_Int(num: Int, consMap: Map[StringVariable, DFA[FAState, Σ]]): SST[SST_State, Σ, Int, SST_Var] = {
+
+    val sstName = "sst" + (num + 1)
+
+    val split_out = -1
+
+    def getTName(id: Int) = "t" + id
+
+    val states: List[SST_State] = List.range(0, num + 1).map(i => SST_State(i, sstName))
+
+    def toSSTStates(q : FAState, idx : Int) = SST_State(q.id, getTName(idx))
+
+    val statesToInit: Map[SST_State, SST_State] = states.map(s =>
+      if (consMap.contains(StringVariable(s.id))) s -> toSSTStates(consMap(StringVariable(s.id)).s0, s.id)
+      else s -> s
+    ).toMap
+
+    val statesToFinal: Map[SST_State, Set[SST_State]] = states.map(s =>
+      if (consMap.contains(StringVariable(s.id))) s -> consMap(StringVariable(s.id)).f.map(q => toSSTStates(q, s.id))
+      else s -> Set(s)
+    ).toMap
+
+    val stateSet: Set[SST_State] = states.flatMap(s =>
+      if (consMap.contains(StringVariable(s.id))) consMap(StringVariable(s.id)).states.map(q => toSSTStates(q, s.id))
+      else Set(s)
+    ).toSet
+
+    val s0: SST_State = statesToInit(states(0))
+
+    val vars: List[SST_Var] = List.range(0, num).map(i => SST_Var(i, sstName))
+
+    val f: Map[SST_State, List[Either[SST_Var, Int]]] = Map(
+      states(num) -> vars.foldLeft(List[Either[SST_Var, Int]]()) { (x, y) => x ::: List(Left(y), Right(split_out)) }
+    )
+
+    val delta0: Map[(SST_State, Σ), SST_State] = List.range(0, num).flatMap(i =>
+      if (consMap.contains(StringVariable(i)))
+        consMap(StringVariable(i)).σ.map(r => (toSSTStates(r._1._1, i), r._1._2) -> toSSTStates(r._2, i))
+      else
+        alphabets.map(c => ((states(i), c) -> states(i)))
+    ).toMap
+
+    val delta1 = List.range(0, num).flatMap(i => statesToFinal(states(i)).map(s => (s, split) -> statesToInit(states(i + 1))).toMap)
+
+    val delta: Map[(SST_State, Σ), SST_State] = delta0 ++ delta1
+
+    val eta0: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Int]]]] = List.range(0, num).flatMap(i =>
+      if (consMap.contains(StringVariable(i)))
+        consMap(StringVariable(i)).σ.map(r =>
+          (toSSTStates(r._1._1, i), r._1._2) -> vars.map(x => if (x.id == i) x -> List(Left(x), Right(i)) else x -> List(Left(x))).toMap)
+      else
+        alphabets.map(c => (states(i), c) -> vars.map(x => if (x.id == i) x -> List(Left(x), Right(i)) else x -> List(Left(x))).toMap)
+    ).toMap
+
+    val eta1: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Int]]]] = List.range(0, num).flatMap(i =>
+      statesToFinal(states(i)).map(s =>
+        (s, split) -> vars.map(x => x -> List[Either[SST_Var, Int]](Left(x))).toMap
+      )).toMap
+
+    val eta: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Int]]]] = eta0 ++ eta1
+
+    val sink = SST_State(num + 1, sstName)
+
+    SST(stateSet + sink,
+      s0,
+      vars.toSet,
+      delta.withDefaultValue(sink),
+      eta.withDefaultValue(vars.map(x => x -> List[Either[SST_Var, Int]]()).toMap),
+      f)
   }
 
 }

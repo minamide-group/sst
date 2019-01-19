@@ -1,5 +1,7 @@
 package nondeterministic
 
+import expression.regex._
+
 
 case class NFA[Q, Σ](
                       states: Set[Q],
@@ -7,14 +9,14 @@ case class NFA[Q, Σ](
                       σ: Map[(Q, Σ), Set[Q]],
                       f: Set[Q]) {
 
-  def process(input: Seq[Σ]): (Boolean, Set[Q]) = {
+  def process(input: Seq[Σ]): Boolean = {
     val finalStates = trans(input)(Set(s0)).intersect(f)
-    (!finalStates.isEmpty, finalStates)
+    !finalStates.isEmpty
   }
 
   def trans(input: Seq[Σ])(cur: Set[Q]): Set[Q] = {
     input match {
-      case Seq(c, cs@_*) => trans(cs)(cur.flatMap(x => σ(x, c)))
+      case Seq(c, cs@_*) => trans(cs)(cur.flatMap(x => σ.withDefaultValue(Set())(x, c)))
       case _ => cur
     }
   }
@@ -49,20 +51,6 @@ case class NFA[Q, Σ](
       }
     }).foldLeft(EmptyExp: RegExp) { (x, y) => AltExp(x, y) }
   }
-
-  trait RegExp
-
-  case class CharExp[T](c: T) extends RegExp
-
-  case class ConcatExp(r1: RegExp, r2: RegExp) extends RegExp
-
-  case class AltExp(r1: RegExp, r2: RegExp) extends RegExp
-
-  case class StarExp(r: RegExp) extends RegExp
-
-  case object EmptyExp extends RegExp
-
-  case object EpsExp extends RegExp
 
 }
 
