@@ -1,10 +1,10 @@
 import java.io.File
 
-import constraint.{Checker, ConstraintBuilder}
+import constraint._
 
 import scala.io.Source
 
-//java -jar checker.jar
+//java -jar checker.jar path
 object Main extends App {
 
   if (args.length == 0) {
@@ -33,10 +33,10 @@ object Main extends App {
       println("file can not be read : " + file.getName)
     else{
       val markSet = Set("chars:", "intCons:", "relCons:", "regCons:")
-      val lines = Source.fromFile(file.getName).getLines().filterNot(s=> s.isEmpty || s.toList.foldLeft(true){(x,y)=>x&&y.isWhitespace } ).toList
+      val lines = Source.fromFile(file.getPath).getLines().filterNot(s=> s.isEmpty || s.startsWith("//") || s.toList.foldLeft(true){(x,y)=>x&&y.isWhitespace } ).toList
       val marks = lines.zipWithIndex.filter(t => markSet(t._1.filterNot(_.isWhitespace))).map(t=> (t._1.filterNot(_.isWhitespace), t._2))
 
-      val chars = lines.slice(1, marks(1)._2).mkString
+      val chars = lines.slice(marks(0)._2+1, marks(1)._2).mkString
       val ic = lines.slice(marks(1)._2+1, marks(2)._2).mkString
       val rl = lines.slice(marks(2)._2+1, marks(3)._2)
       val rg = lines.slice(marks(3)._2+1, lines.length)

@@ -130,50 +130,5 @@ object Z3Exp {
     declare_sentence + "\n" + assert_sentence + "\n" + end_sentence
   }
 
-  def toZ3Input(cons : String, sls: Set[(Map[Int, Int], Set[Map[Int, Int]])]): String = {
-    //assert cons is valid
 
-    def getStrName(i : Int) = "len"+i
-
-    def getIntName(i : Int) = "x"+i
-
-    def getVarName(x: Int, y: Int): String = "v" + x + "_" + y
-
-    def getLinear(x: Int, base: Int, expected: String, m: Map[Int, Int]): Exp = Op2Exp("=", StringExp(expected),
-      m.map(y => Op2Exp("*", StringExp(y._2.toString), StringExp(getVarName(x, y._1)))).foldLeft(StringExp(base.toString): Exp) { (p, q) => Op2Exp("+", p, q) })
-
-    val strVars : Set[Int] = cons.split(" ").toSet.filter(_.startsWith("len")).map(s=>
-      if(s.endsWith(")")) s.substring(3, s.length-1).toInt
-      else s.substring(3).toInt)
-
-    val intVars : Set[Int] = cons.split(" ").toSet.filter(_.startsWith("x")).map(s=>
-      if(s.endsWith(")")) s.substring(1, s.length-1).toInt
-      else s.substring(1).toInt)
-
-    val list : List[(Map[Int,Int], List[Map[Int,Int]])] = sls.toList.map(r=> (r._1, r._2.toList))
-
-    val declare_0 = strVars.map(i => "(declare-const " + getStrName(i) + " Int)").mkString("\n")
-
-    val declare_1 = intVars.map(i => "(declare-const " + getIntName(i) + " Int)").mkString("\n")
-
-    val declare_2 = List.range(0, list.size).flatMap(i=>{
-      List.range(0, list(i)._2.size).map(j => "(declare-const " + getVarName(i, j) + " Int)")
-    }).mkString("\n")
-
-    val formula_0 = List.range(0, list.size).map(i=>
-      strVars.map(x=>
-        getLinear(i, list(i)._1(x), getStrName(x), List.range(0, list(i)._2.size).map(j=> j-> list(i)._2(j)(x)).toMap )
-      ).foldLeft(StringExp("true"): Exp) { (p, q) => Op2Exp("and", p, q) }
-    ).foldLeft(StringExp("false"): Exp) { (p, q) => Op2Exp("or", p, q) }
-
-    val formula = if (cons.isEmpty) formula_0 else Op2Exp("and", formula_0, StringExp(cons))
-
-    val declare_sentence = declare_0 + "\n" + declare_1 + "\n" + declare_2
-
-    val assert_sentence = "(assert" + eval(formula) + ")"
-
-    val end_sentence = "(check-sat)"
-
-    declare_sentence + "\n" + assert_sentence + "\n" + end_sentence
-  }
 }

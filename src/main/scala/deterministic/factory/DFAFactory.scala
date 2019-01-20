@@ -201,13 +201,13 @@ case class DFAFactory() {
 
     val next0 = dfa.σ.groupBy(_._1._1).map(t=> t._1-> t._2.map(_._2).toSet)
 
-    val usedStates0 = star(Set(dfa.s0),  next0)
+    val reachedFromS0 = star(Set(dfa.s0),  next0)
 
-    val next = next0.filter(p => usedStates0(p._1) ).map(p => p._1->p._2.filter(q=>usedStates0(q)) )
+    val next = next0.filter(p => reachedFromS0(p._1) ).map(p => p._1->p._2.filter(q=>reachedFromS0(q)) ).filterNot(_._2.isEmpty)
 
-    val f = dfa.f.intersect(usedStates0)
+    val f = dfa.f.intersect(reachedFromS0)
 
-    val usedStates = usedStates0.filterNot(q=>star(Set(q), next).intersect(f).isEmpty)
+    val usedStates = reachedFromS0.filterNot(q=>star(Set(q), next).intersect(f).isEmpty)
 
     DFA(
       dfa.states.filter(q=>usedStates(q)),

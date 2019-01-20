@@ -78,6 +78,9 @@ case class SST[Q, Σ, Γ, X](
 object SST {
 
   def getParikhImage[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = {
+    println("start construct Parikh image:")
+    val startTime = System.currentTimeMillis()
+
     val η = sst.η
     val f = sst.f
     val s0 = sst.s0
@@ -108,10 +111,15 @@ object SST {
       case EmptyExp => Set()
     }
 
-    if (f.contains(s0)) r ++ Set[(Map[Γ, Int], Set[Map[Γ, Int]])]((
+    val res = if (f.contains(s0)) r ++ Set[(Map[Γ, Int], Set[Map[Γ, Int]])]((
       alphabets.map(c => c -> f(s0).filter(x => x.isRight).map(x => x.right.get).groupBy(identity).mapValues(_.size).withDefaultValue(0)(c)).toMap
-      , Set.empty))
-    else r
+      , Set.empty)) else r
+
+    val timeCost = System.currentTimeMillis() - startTime
+    println("Parikh image is constructed in " + timeCost.toDouble/1000 + "s")
+    println("Parikh image linear sets: " + res.size)
+    println()
+    res
   }
 
   private def getMapTransducer[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Map[Γ, Int]] = {
@@ -194,10 +202,10 @@ object SST {
   def trim[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): SST[Q, Σ, Γ, X] = {
     def trimVars[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): SST[Q, Σ, Γ, X] = {
 
-      def star[X](f: X => Set[X])(v1: Set[X]): Set[X] = {
-        val v2 = v1.flatMap(f) ++ v1
+      def star[X](next: X => Set[X])(v1: Set[X]): Set[X] = {
+        val v2 = v1.flatMap(next) ++ v1
         if (v1 == v2) v1
-        else star(f)(v2)
+        else star(next)(v2)
       }
 
       def usedVars(sst: SST[Q, Σ, Γ, X]): Set[X] = {
@@ -227,26 +235,28 @@ object SST {
 
     def trimStates[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): SST[Q, Σ, Γ, X] = {
 
-      def star(res: Set[Q], f: Map[Q, Set[Q]]): Set[Q] = {
-        val newStates = res.flatMap(q => f(q)).filterNot(q => res(q))
+      def star(res: Set[Q], next: Map[Q, Set[Q]]): Set[Q] = {
+        val newStates = res.flatMap(q => next(q)).filterNot(q => res(q))
         if (newStates.isEmpty) res
-        else star(res ++ newStates, f)
+        else star(res ++ newStates, next)
       }
 
-      val func: Map[Q, Set[Q]] = sst.δ.toSet.map((r: ((Q, Σ), Q)) => (r._1._1, r._2)).groupBy(r => r._1: Q).map(r => r._1 -> r._2.map(_._2))
+      val next0: Map[Q, Set[Q]] = sst.δ.toSet.map((r: ((Q, Σ), Q)) => (r._1._1, r._2)).groupBy(r => r._1: Q).map(r => r._1 -> r._2.map(_._2))
 
-      val new_states: Set[Q] = star(Set(sst.s0), func)
+      val reachedFromS0: Set[Q] = star(Set(sst.s0), next0)
 
-      val new_delta = sst.δ.filter(r => new_states(r._1._1)).filter(r => new_states(r._2))
+      val f = sst.f.filter(r => reachedFromS0(r._1))
 
-      val new_eta = sst.η.filter(r => new_delta.contains(r._1))
+      val states = reachedFromS0
 
-      val new_f = sst.f.filter(r => new_states(r._1))
+      val delta = sst.δ.filter(r => states(r._1._1) && states(r._2) )
 
-      SST(new_states, sst.s0, sst.vars, new_delta, new_eta, new_f)
+      val eta = sst.η.filter(r => delta.contains(r._1))
+
+      SST(states, sst.s0, sst.vars, delta, eta, f)
     }
 
-    trimVars(trimStates(sst))
+    trimVars(sst)
   }
 
   def print[Q, Σ, Γ, X](s : SST[Q, Σ, Γ, X]): Unit ={
