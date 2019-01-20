@@ -12,7 +12,6 @@ import scala.sys.process._
 
 object Checker {
 
-  @deprecated
   def process(intCons: IntCons, relCons: List[RelCons], regCons: Set[RegCons[Char]], charSet: Set[Char], split : Char): Boolean = {
 
     val sst = SSTBuilder(charSet, split).constraintsToSST_Int(relCons, regCons)
@@ -41,7 +40,9 @@ object Checker {
     }
   }
 
-  def process(intCons: String, relCons: List[RelCons], regCons: Set[RegCons[Char]], charSet: Set[Char], split : Char): Boolean = {
+  def process(cons : (String, List[RelCons], Set[RegCons[Char]], Set[Char]), split : Char): Boolean = {
+
+    val (intCons, relCons, regCons, charSet) = cons
 
     val sst = SSTBuilder(charSet, split).constraintsToSST_Int(relCons, regCons)
 

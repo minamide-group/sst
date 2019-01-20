@@ -142,9 +142,13 @@ object Z3Exp {
     def getLinear(x: Int, base: Int, expected: String, m: Map[Int, Int]): Exp = Op2Exp("=", StringExp(expected),
       m.map(y => Op2Exp("*", StringExp(y._2.toString), StringExp(getVarName(x, y._1)))).foldLeft(StringExp(base.toString): Exp) { (p, q) => Op2Exp("+", p, q) })
 
-    val strVars : Set[Int] = cons.split(" ").toSet.filter(_.startsWith("len")).map(s=> s.substring(3).toInt)
+    val strVars : Set[Int] = cons.split(" ").toSet.filter(_.startsWith("len")).map(s=>
+      if(s.endsWith(")")) s.substring(3, s.length-1).toInt
+      else s.substring(3).toInt)
 
-    val intVars : Set[Int] = cons.split(" ").toSet.filter(_.startsWith("x")).map(s=> s.substring(1).toInt)
+    val intVars : Set[Int] = cons.split(" ").toSet.filter(_.startsWith("x")).map(s=>
+      if(s.endsWith(")")) s.substring(1, s.length-1).toInt
+      else s.substring(1).toInt)
 
     val list : List[(Map[Int,Int], List[Map[Int,Int]])] = sls.toList.map(r=> (r._1, r._2.toList))
 

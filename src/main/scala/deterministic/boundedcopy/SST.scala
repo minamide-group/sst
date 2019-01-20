@@ -192,61 +192,61 @@ object SST {
   }
 
   def trim[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): SST[Q, Σ, Γ, X] = {
-    trimVars(trimStates(sst))
-  }
+    def trimVars[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): SST[Q, Σ, Γ, X] = {
 
-  private def trimVars[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): SST[Q, Σ, Γ, X] = {
-
-    def star[X](f: X => Set[X])(v1: Set[X]): Set[X] = {
-      val v2 = v1.flatMap(f) ++ v1
-      if (v1 == v2) v1
-      else star(f)(v2)
-    }
-
-    def usedVars(sst: SST[Q, Σ, Γ, X]): Set[X] = {
-      def app(xs: Map[X, Set[X]], ys: Map[X, Set[X]]): Map[X, Set[X]] = sst.vars.map(v => (v, xs.getOrElse(v, Set()) ++ ys.getOrElse(v, Set()))).toMap
-
-      val labelx: Iterable[Map[X, Set[X]]] = sst.η.map(_._2).map {
-        _.map { case (x, y) => (x, y.collect { case Left(x) => x }.toSet) }
+      def star[X](f: X => Set[X])(v1: Set[X]): Set[X] = {
+        val v2 = v1.flatMap(f) ++ v1
+        if (v1 == v2) v1
+        else star(f)(v2)
       }
-      val label: X => Set[X] = labelx.foldLeft(Map[X, Set[X]]()) { (acc, i) => app(acc, i) }
-      val revlabel: Map[X, Set[X]] = sst.vars.map { x => (x, sst.vars.filter { y => label(y)(x) }) }.toMap
-      val use: Set[X] = sst.f.flatMap(_._2).collect { case Left(x) => x }.toSet
-      val nonempty: Set[X] = sst.η.toList.flatMap(_._2).filter { r => r._2.exists(_.isRight) }.map(_._1).toSet
 
-      star(label)(use).intersect(star(revlabel)(nonempty))
+      def usedVars(sst: SST[Q, Σ, Γ, X]): Set[X] = {
+        def app(xs: Map[X, Set[X]], ys: Map[X, Set[X]]): Map[X, Set[X]] = sst.vars.map(v => (v, xs.getOrElse(v, Set()) ++ ys.getOrElse(v, Set()))).toMap
+
+        val labelx: Iterable[Map[X, Set[X]]] = sst.η.map(_._2).map {
+          _.map { case (x, y) => (x, y.collect { case Left(x) => x }.toSet) }
+        }
+        val label: X => Set[X] = labelx.foldLeft(Map[X, Set[X]]()) { (acc, i) => app(acc, i) }
+        val revlabel: Map[X, Set[X]] = sst.vars.map { x => (x, sst.vars.filter { y => label(y)(x) }) }.toMap
+        val use: Set[X] = sst.f.flatMap(_._2).collect { case Left(x) => x }.toSet
+        val nonempty: Set[X] = sst.η.toList.flatMap(_._2).filter { r => r._2.exists(_.isRight) }.map(_._1).toSet
+
+        star(label)(use).intersect(star(revlabel)(nonempty))
+      }
+
+      val new_vars = usedVars(sst)
+
+      val new_eta = sst.η.map(
+        r => r._1 -> r._2.filter(x => new_vars(x._1)).map(x => x._1 -> x._2.filter(e => (e.isRight) || (e.isLeft && new_vars(e.left.get))))
+      ).withDefaultValue(new_vars.map(x => x -> List()).toMap.withDefaultValue(List()))
+
+      val new_f = sst.f.map(t => t._1 -> t._2.filter(e => (e.isRight) || (e.isLeft && new_vars(e.left.get))))
+
+      SST(sst.states, sst.s0, new_vars, sst.δ, new_eta, new_f)
     }
 
-    val new_vars = usedVars(sst)
+    def trimStates[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): SST[Q, Σ, Γ, X] = {
 
-    val new_eta = sst.η.map(
-      r => r._1 -> r._2.filter(x => new_vars(x._1)).map(x => x._1 -> x._2.filter(e => (e.isRight) || (e.isLeft && new_vars(e.left.get))))
-    ).withDefaultValue(new_vars.map(x => x -> List()).toMap.withDefaultValue(List()))
+      def star(res: Set[Q], f: Map[Q, Set[Q]]): Set[Q] = {
+        val newStates = res.flatMap(q => f(q)).filterNot(q => res(q))
+        if (newStates.isEmpty) res
+        else star(res ++ newStates, f)
+      }
 
-    val new_f = sst.f.map(t => t._1 -> t._2.filter(e => (e.isRight) || (e.isLeft && new_vars(e.left.get))))
+      val func: Map[Q, Set[Q]] = sst.δ.toSet.map((r: ((Q, Σ), Q)) => (r._1._1, r._2)).groupBy(r => r._1: Q).map(r => r._1 -> r._2.map(_._2))
 
-    SST(sst.states, sst.s0, new_vars, sst.δ, new_eta, new_f)
-  }
+      val new_states: Set[Q] = star(Set(sst.s0), func)
 
-  private def trimStates[Q, Σ, Γ, X](sst: SST[Q, Σ, Γ, X]): SST[Q, Σ, Γ, X] = {
+      val new_delta = sst.δ.filter(r => new_states(r._1._1)).filter(r => new_states(r._2))
 
-    def star(res: Set[Q], f: Map[Q, Set[Q]]): Set[Q] = {
-      val newStates = res.flatMap(q => f(q)).filterNot(q => res(q))
-      if (newStates.isEmpty) res
-      else star(res ++ newStates, f)
+      val new_eta = sst.η.filter(r => new_delta.contains(r._1))
+
+      val new_f = sst.f.filter(r => new_states(r._1))
+
+      SST(new_states, sst.s0, sst.vars, new_delta, new_eta, new_f)
     }
 
-    val func: Map[Q, Set[Q]] = sst.δ.toSet.map((r: ((Q, Σ), Q)) => (r._1._1, r._2)).groupBy(r => r._1: Q).map(r => r._1 -> r._2.map(_._2))
-
-    val new_states: Set[Q] = star(Set(sst.s0), func)
-
-    val new_delta = sst.δ.filter(r => new_states(r._1._1)).filter(r => new_states(r._2))
-
-    val new_eta = sst.η.filter(r => new_delta.contains(r._1))
-
-    val new_f = sst.f.filter(r => new_states(r._1))
-
-    SST(new_states, sst.s0, sst.vars, new_delta, new_eta, new_f)
+    trimVars(trimStates(sst))
   }
 
   def print[Q, Σ, Γ, X](s : SST[Q, Σ, Γ, X]): Unit ={
