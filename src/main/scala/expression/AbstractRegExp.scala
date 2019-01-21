@@ -11,7 +11,7 @@ trait AbstractRegExp[T, Γ] {
   def getEpsExp: RegExp
 
   def toRegExp[Q, Σ](transducer: nondeterministic.Transducer[Q, Σ, Γ]): RegExp = {
-    val (states, initialStates, finialStates, delta) = (transducer.states, transducer.initStates, transducer.F, transducer.δ)
+    val (states, initialStates, finialStates, delta) = (transducer.states, transducer.s0, transducer.f, transducer.δ)
 
     initialStates.flatMap(q0 => {
       finialStates.map(qf => {

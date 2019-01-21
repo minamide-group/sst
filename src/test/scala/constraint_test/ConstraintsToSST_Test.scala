@@ -37,7 +37,7 @@ class ConstraintsToSST_Test extends FlatSpec {
           }
         ).mkString)
 
-        case t: TransducerConstraint[Char] => assert(strs(t.left.id) == t.right1.trans(strs(t.right2.id).toList)(t.right1.initialStates))
+        case t: TransducerConstraint[Char] => assert(strs(t.left.id) == t.right1.trans(strs(t.right2.id).toList)(t.right1.s0))
       }
     })
 
@@ -49,7 +49,7 @@ class ConstraintsToSST_Test extends FlatSpec {
   "sst builder" should "runs" in {
     val builder = SSTBuilder[Char](Set('a', 'b'), '#')
     val sst = builder.constraintsToSST(list, set)
-    SST.print(sst)
+    sst.print
 
     val input = List("ab", "ab")
     val result = sst.process(input.mkString("#") + "#")

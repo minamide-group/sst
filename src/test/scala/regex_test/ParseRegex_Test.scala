@@ -54,7 +54,7 @@ class ParseRegex_Test extends FlatSpec{
   }
 
   def myAssert(regex : String, chars : List[Char], testTime : Int): Unit ={
-    val dfa = factory.RegToDFA(factory.parseReg(regex))
+    val dfa = factory.getDFA(regex)
     for(_  <- 0 to testTime){
       val length = r.nextInt(100)
       val input = getRandomString(length, chars)

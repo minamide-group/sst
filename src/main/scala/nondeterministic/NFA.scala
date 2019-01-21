@@ -1,12 +1,14 @@
 package nondeterministic
 
+import constraint.vars.FAState
+import deterministic.DFA
 import expression.regex._
 
 
 case class NFA[Q, Σ](
                       states: Set[Q],
                       s0: Q,
-                      σ: Map[(Q, Σ), Set[Q]],
+                      δ: Map[(Q, Σ), Set[Q]],
                       f: Set[Q]) {
 
   def process(input: Seq[Σ]): Boolean = {
@@ -16,7 +18,7 @@ case class NFA[Q, Σ](
 
   def trans(input: Seq[Σ])(cur: Set[Q]): Set[Q] = {
     input match {
-      case Seq(c, cs@_*) => trans(cs)(cur.flatMap(x => σ.withDefaultValue(Set())(x, c)))
+      case Seq(c, cs@_*) => trans(cs)(cur.flatMap(x => δ.withDefaultValue(Set())(x, c)))
       case _ => cur
     }
   }
@@ -37,7 +39,7 @@ case class NFA[Q, Σ](
     }
 
     f.map(q_f => {
-      val rules: Set[(Q, RegExp, Q)] = eliminate(states.filterNot(x => x == s0).filterNot(x => x == q_f).toList, σ.toSet.flatMap((r: ((Q, Σ), Set[Q])) => r._2.map(q1 => (r._1._1, CharExp(r._1._2), q1))))
+      val rules: Set[(Q, RegExp, Q)] = eliminate(states.filterNot(x => x == s0).filterNot(x => x == q_f).toList, δ.toSet.flatMap((r: ((Q, Σ), Set[Q])) => r._2.map(q1 => (r._1._1, CharExp(r._1._2), q1))))
 
       s0 match {
         case q if q == q_f =>
@@ -52,5 +54,61 @@ case class NFA[Q, Σ](
     }).foldLeft(EmptyExp: RegExp) { (x, y) => AltExp(x, y) }
   }
 
-}
+  def print {
+    println("---- start print nfa ----")
+    println("states: ")
+    states.foreach(println)
+    println("------------")
+    println("s0: ")
+    println(s0)
+    println("------------")
+    println("delta: ")
+    δ.foreach(println)
+    println("------------")
+    println("F: ")
+    f.foreach(println)
+    println("------end print dfa------")
+  }
 
+  def rename: NFA[FAState, Σ] = {
+    val toNewStates = states.toList.zipWithIndex.map(t => t._1 -> FAState(t._2)).toMap
+
+    NFA(
+      states.map(q => toNewStates(q)),
+      toNewStates(s0),
+      δ.map(r => (toNewStates(r._1._1), r._1._2) -> r._2.map(s => toNewStates(s))),
+      f.map(q => toNewStates(q))
+    )
+  }
+
+  def toDFA: DFA[Set[Q], Σ] = {
+
+    def getStatesAndDelta(res1: Set[Set[Q]],
+                          res2: Map[(Set[Q], Σ), Set[Q]],
+                          queue: List[Set[Q]],
+                          rules: Map[(Q, Σ), Set[Q]]): (Set[Set[Q]], Map[(Set[Q], Σ), Set[Q]]) = {
+      queue match {
+        case s :: rest => {
+          val newRules: Map[(Set[Q], Σ), Set[Q]] = rules.filter(r => s(r._1._1)).groupBy(_._1._2).map(t => {
+            (s, t._1) -> t._2.flatMap(r => r._2).toSet
+          }).filterNot(r => res2.contains(r._1))
+
+          val newStates: List[Set[Q]] = newRules.map(r => r._2).filterNot(q => q == s || res1(q)).toList
+
+          getStatesAndDelta(res1 + s, res2 ++ newRules, rest ::: newStates, rules)
+        }
+        case Nil => (res1, res2)
+      }
+    }
+
+    val (states, delta) = getStatesAndDelta(Set(), Map(), List(Set(s0)), δ)
+
+    DFA(
+      states,
+      Set(s0),
+      delta,
+      states.filterNot(s => s.intersect(f).isEmpty)
+    )
+  }
+
+}

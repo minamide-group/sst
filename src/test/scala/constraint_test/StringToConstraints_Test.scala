@@ -14,8 +14,9 @@ class StringToConstraints_Test extends FlatSpec{
       "2 v(1) v(0)",
       "3 v(2) w(abc) v(1)",
       "4 replace a bb 3")
-    val builder = new ConstraintBuilder("abc", rl, rg, ic)
-    val res = Checker.process(builder.toConstraints, '#')
+    val chars = "abc"
+
+    val res = Checker.process(chars, rl, rg, ic, '#', false)
 
     assert(res)
   }

@@ -12,7 +12,7 @@ object TransducerExamples {
     def zero: List[Char] = List()
   }
 
-  def getHalfTransducer() =Transducer(Set(
+  def getHalfTransducer() = Transducer(Set(
     TransState(0), TransState(1)),
     TransState(0),
     Map(

@@ -1,7 +1,7 @@
 package regex_test
 
 import constraint.vars.FAState
-import deterministic.factory.DFAFactory
+import deterministic.DFA
 import nondeterministic.NFA
 import org.scalatest.FlatSpec
 
@@ -19,16 +19,15 @@ class NFAtoDFA_Test extends FlatSpec{
       Set(FAState(2))
     )
 
-    val factory = DFAFactory()
-    val dfa1 = factory.NFAtoDFA(nfa)
+    val dfa1 = nfa.toDFA
 
-    val dfa2 = factory.rename(dfa1)
+    val dfa2 = dfa1.rename
 
-    val dfa3 = factory.trim(dfa2)
+    val dfa3 = dfa2.trim
 
     val dfa = dfa3
     dfa.states.foreach(println)
-    dfa.σ.foreach(println)
+    dfa.δ.foreach(println)
     dfa.f.foreach(println)
   }
 }
