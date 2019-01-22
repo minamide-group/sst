@@ -17,16 +17,24 @@ object Checker {
       println("------start check at " + Calendar.getInstance.getTime+"---------")
     }
     val startTime = System.currentTimeMillis()
-    val res= processInner(chars, rl, rg, ic, split, log)
-    if(log){
-      val timeCost = System.currentTimeMillis() - startTime
-      println("result: " + (if(res) "sat" else "unsat") )
-      println("total time cost : " + timeCost.toDouble/1000 + "s")
-      println("--------end check at " + Calendar.getInstance.getTime+"---------")
-      println()
-      println()
+    try{
+      val res= processInner(chars, rl, rg, ic, split, log)
+      if(log){
+        val timeCost = System.currentTimeMillis() - startTime
+        println("result: " + (if(res) "sat" else "unsat") )
+        println("total time cost : " + timeCost.toDouble/1000 + "s")
+        println("--------end check at " + Calendar.getInstance.getTime+"---------")
+        println()
+        println()
+      }
+      res
+    }catch {
+      case e : Throwable => {
+        println(e.getMessage)
+        println("------------break at " + Calendar.getInstance.getTime+"---------")
+        false
+      }
     }
-    res
   }
 
   private def processInner(chars: String, rl: List[String], rg: List[String], ic: String, split: Char, log: Boolean): Boolean = {

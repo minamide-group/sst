@@ -8,7 +8,7 @@ import org.scalatest.FlatSpec
 class RemoveEps_Test extends FlatSpec{
 
   "program" should "run" in{
-    val factory = DFAFactory()
+    val factory = DFAFactory(Set('a'))
     val eps = factory.Eps
     val ch = factory.Ch
     val s = List.range(0, 7).map(i=>FAState(i))

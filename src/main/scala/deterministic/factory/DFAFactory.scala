@@ -3,7 +3,7 @@ package deterministic.factory
 import expression.regex._
 import nondeterministic.NFA
 
-case class DFAFactory() {
+case class DFAFactory(charSet : Set[Char]) {
 
   class S
 
@@ -111,7 +111,12 @@ case class DFAFactory() {
       (cur, idx)
     }
 
-    f(str, 0, Set())._1
+    def parseDot(str : String):String = {
+      val x = "(" + charSet.mkString("|") + ")"
+      str.replace(".", x)
+    }
+
+    f(parseDot(str), 0, Set())._1
   }
 
   def RegToNFA(regex: RegExp): NFA[S, C] = {

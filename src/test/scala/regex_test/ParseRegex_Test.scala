@@ -26,7 +26,7 @@ class ParseRegex_Test extends FlatSpec{
   }
 
   "p2" should "run" in {
-    myAssert("( a | b ) * c", List('a', 'b', 'c'), 100)
+    myAssert("(a|b)*c", List('a', 'b', 'c'), 100)
   }
 
   "p3" should "run" in {
@@ -41,9 +41,14 @@ class ParseRegex_Test extends FlatSpec{
     myAssert("()|(a|(b|e)|d*)c", List('a', 'b', 'c', 'd', 'e'), 100)
   }
 
+  "p6" should "run" in {
+    val dfa = factory.getDFA("..*")
+    println(dfa.process("abc"))
+  }
+
   val r = scala.util.Random
 
-  val factory = DFAFactory()
+  val factory = DFAFactory("abcde".toSet)
 
   def getRandomString(length: Int, chars: List[Char]): String = {
     val r = new scala.util.Random

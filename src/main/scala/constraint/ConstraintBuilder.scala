@@ -9,7 +9,7 @@ import deterministic.factory.{DFAFactory, TransducerFactory}
 case class ConstraintBuilder(chars : String, rl : List[String], rg : List[String], ic: String) {
   val charSet = chars.toSet
   val tf = TransducerFactory(charSet)
-  val df = DFAFactory()
+  val df = DFAFactory(charSet)
 
   //assert input is valid
   private def toRelCons_concat(t : Array[String])={
@@ -56,7 +56,7 @@ case class ConstraintBuilder(chars : String, rl : List[String], rg : List[String
 
   private def toRegCons(str : String)= {
     val t = str.split(" ").filterNot(_.isEmpty)
-    t(0).toInt->df.getDFA(t(1))
+    t(0).toInt->df.getDFA(t.drop(1).mkString)
   }
 
   def toConstraints : (String, List[RelCons], Set[RegCons[Char]], Set[Char]) = {
