@@ -6,20 +6,20 @@ import constraint.vars._
 import deterministic.DFA
 import deterministic.boundedcopy.{Composition, SST}
 
-case class SSTBuilder[Σ](alphabets: Set[Σ],
+case class SSTBuilder[Σ](charSet: Set[Σ],
                          //assert split is not in alphabets
                          split: Σ) {
 
   def constraintsToSST(list: List[RelCons], set: Set[RegCons[Σ]]): SST[SST_State, Σ, Int, SST_Var] = {
 
-    def _compose( sst: SST[SST_State, Σ, Σ, SST_Var], list: List[SST[SST_State, Σ, Σ, SST_Var]]): SST[SST_State, Σ, Σ, SST_Var] = {
+    def _compose(sst: SST[SST_State, Σ, Σ, SST_Var], list: List[SST[SST_State, Σ, Σ, SST_Var]]): SST[SST_State, Σ, Σ, SST_Var] = {
       list match {
         case Nil => sst
-        case e :: rest => _compose( compose0(sst, e), rest)
+        case e :: rest => _compose(compose0(sst, e), rest)
       }
     }
 
-    def compose0[Y](sst1: SST[SST_State, Σ, Σ, SST_Var], sst2: SST[SST_State, Σ, Y, SST_Var]) = Composition.compose(sst1, sst2).rename(0).trim
+    def compose0[Y](sst1: SST[SST_State, Σ, Σ, SST_Var], sst2: SST[SST_State, Σ, Y, SST_Var]) = Composition.compose(sst1, sst2).rename("r0").trim
 
     val sstList: List[SST[SST_State, Σ, Σ, SST_Var]] =
       list.map(cons => relationalToSST(cons))
@@ -29,7 +29,7 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
     val sst0 = if (sstList.size == 1)
       sstList(0)
     else
-      _compose(compose0( sstList(0), sstList(1)), sstList.drop(2))
+      _compose(compose0(sstList(0), sstList(1)), sstList.drop(2))
 
     compose0(sst0, last)
   }
@@ -49,11 +49,11 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
       val s0: SST_State = states(0)
 
       val delta: Map[(SST_State, Σ), SST_State] = List.range(0, num - 1).map(i =>
-        alphabets.map(c => (states(i), c) -> states(i))
+        charSet.map(c => (states(i), c) -> states(i))
       ).foldLeft(List.range(0, num - 1).map(i => (states(i), split) -> states(i + 1))) { (x, y) => x ++ y }.toMap
 
       val eta: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] = List.range(0, num - 1).map(i =>
-        alphabets.map(c =>
+        charSet.map(c =>
           (states(i), c) ->
             List.range(0, num - 1).map(j => vars(j) -> (if (j == i) List(Left(vars(j)), Right(c)) else List(Left(vars(j))))).toMap
         )
@@ -98,33 +98,33 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
 
       val trans = cons.right1
 
-      val transToSST: Map[TransState, SST_State] = trans.states.map(s => s -> SST_State(s.id, tName)).toMap
+      val toNewState: Map[TransState, SST_State] = trans.states.map(s => s -> SST_State(s.id, tName)).toMap
 
       val vars: List[SST_Var] = List.range(0, num).map(x => SST_Var(x, sstName))
 
       val states: List[SST_State] = List.range(0, num).map(x => SST_State(x, sstName))
 
-      val s0: SST_State = if (idx == 0) transToSST(trans.s0) else states(0)
+      val s0: SST_State = if (idx == 0) toNewState(trans.s0) else states(0)
 
       val delta0: Map[(SST_State, Σ), SST_State] =
         List.range(0, num - 1).filter(i => i != idx).map(i =>
-          alphabets.map(c => (states(i), c) -> states(i))
+          charSet.map(c => (states(i), c) -> states(i))
         ).foldLeft(
           List.range(0, num - 1).filter(i => i != idx).filter(i => i != idx - 1).map(i => (states(i), split) -> states(i + 1))
         ) { (x, y) => x ++ y }.toMap //original
 
-      val delta1: Map[(SST_State, Σ), SST_State] = trans.δ.map(r => (transToSST(r._1._1), r._1._2) -> transToSST(r._2))
+      val delta1: Map[(SST_State, Σ), SST_State] = trans.δ.map(r => (toNewState(r._1._1), r._1._2) -> toNewState(r._2))
 
-      val delta2: Map[(SST_State, Σ), SST_State] = trans.f.map(s => (transToSST(s), split) -> states(idx + 1)).toMap
+      val delta2: Map[(SST_State, Σ), SST_State] = trans.f.map(s => (toNewState(s), split) -> states(idx + 1)).toMap
 
       val delta3: Map[(SST_State, Σ), SST_State] = if (idx == 0) Map()
-      else Map((states(idx - 1), split) -> transToSST(trans.s0))
+      else Map((states(idx - 1), split) -> toNewState(trans.s0))
 
       val delta: Map[(SST_State, Σ), SST_State] = delta0 ++ delta1 ++ delta2 ++ delta3
 
       val eta0: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] =
         List.range(0, num - 1).filter(i => i != idx).map(i =>
-          alphabets.map(c =>
+          charSet.map(c =>
             (states(i), c) ->
               List.range(0, num).map(j =>
                 vars(j) -> (if (j == i) List(Left(vars(j)), Right(c)) else List(Left(vars(j))))
@@ -139,7 +139,7 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
 
       val eta1: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] =
         trans.η.map(r =>
-          (transToSST(r._1._1), r._1._2) ->
+          (toNewState(r._1._1), r._1._2) ->
             List.range(0, num).map(j =>
               if (j == idx)
                 vars(j) -> List(Left(vars(j)), Right(r._1._2))
@@ -151,7 +151,7 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
         )
 
       val eta2: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] =
-        trans.f.map(s => (transToSST(s), split) ->
+        trans.f.map(s => (toNewState(s), split) ->
           vars.map(x => x -> List[Either[SST_Var, Σ]](Left(x))).toMap
         ).toMap
 
@@ -166,7 +166,7 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
 
       val sink = SST_State(num, sstName)
 
-      SST(states.toSet - states(idx) ++ transToSST.map(x => x._2).toSet + sink,
+      SST(states.toSet - states(idx) ++ toNewState.map(x => x._2).toSet + sink,
         s0,
         vars.toSet,
         delta.withDefaultValue(sink),
@@ -174,9 +174,103 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
         f)
     }
 
+    def _constraintToSST2(cons: SSTConstraint[Σ]): SST[SST_State, Σ, Σ, SST_Var] = {
+
+      val num = cons.left.id + 1
+
+      val sstName = "sst" + num
+
+      val idx = cons.right2.id
+
+      val consSST = cons.right1.rename("t" + idx)
+
+      val states: List[SST_State] = List.range(0, num).map(x => SST_State(x, sstName))
+
+      val vars: List[SST_Var] = List.range(0, num).map(x => SST_Var(x, sstName))
+
+      val sink = SST_State(num, sstName)
+
+      val stateSet = states.toSet - states(idx) ++ consSST.states + sink
+
+      val varSet = vars.toSet ++ consSST.vars
+
+      val s0: SST_State = if (idx == 0) consSST.s0 else states(0)
+
+      val delta0: Map[(SST_State, Σ), SST_State] =
+        List.range(0, num - 1).filter(i => i != idx).map(i =>
+          charSet.map(c => (states(i), c) -> states(i))
+        ).foldLeft(
+          List.range(0, num - 1).filter(i => i != idx).filter(i => i != idx - 1).map(i => (states(i), split) -> states(i + 1))
+        ) { (x, y) => x ++ y }.toMap //original
+
+      val delta1: Map[(SST_State, Σ), SST_State] = consSST.δ
+
+      val delta2: Map[(SST_State, Σ), SST_State] = consSST.f.keySet.map(s => (s, split) -> states(idx + 1)).toMap
+
+      val delta3: Map[(SST_State, Σ), SST_State] = if (idx == 0) Map() else Map((states(idx - 1), split) -> consSST.s0)
+
+      val delta: Map[(SST_State, Σ), SST_State] = delta0 ++ delta1 ++ delta2 ++ delta3
+
+      val eta0: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] =
+        List.range(0, num - 1).filter(i => i != idx).map(i =>
+          charSet.map(c =>
+            (states(i), c) -> (
+              List.range(0, num).map(j =>
+                vars(j) -> (if (j == i) List(Left(vars(j)), Right(c)) else List(Left(vars(j))))
+              ).toMap ++ consSST.vars.map(x => x -> List()).toMap
+              )
+          )
+        ).foldLeft(
+          List.range(0, num - 1).filter(i => i != idx).filter(i => i != idx - 1).map(i =>
+            (states(i), split) ->
+              (vars.map(x => x -> List[Either[SST_Var, Σ]](Left(x))).toMap ++ consSST.vars.map(x => x -> List()).toMap)
+          )
+        ) { (x, y) => x ++ y }.toMap
+
+      val eta1: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] =
+        consSST.η.map(r =>
+          r._1 -> (
+            List.range(0, num).map(j =>
+              if (j == idx)
+                vars(j) -> List(Left(vars(j)), Right(r._1._2))
+              else
+                vars(j) -> List(Left(vars(j)))
+            ).toMap ++ r._2
+            )
+        )
+
+      val eta2: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] =
+        consSST.f.map(t =>
+          (t._1, split) -> (
+            vars.map(x => x -> List[Either[SST_Var, Σ]](Left(x))).toMap + (vars(num - 1) -> t._2) ++ consSST.vars.map(x => x -> List()).toMap
+            )
+        )
+
+      val eta3: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] =
+        if (idx == 0) Map()
+        else Map(
+          (states(idx - 1), split) -> (
+            vars.map(x => x -> List[Either[SST_Var, Σ]](Left(x))).toMap ++ consSST.vars.map(x => x -> List()).toMap
+            )
+        )
+
+      val eta: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Σ]]]] = eta0 ++ eta1 ++ eta2 ++ eta3
+
+      val f: Map[SST_State, List[Either[SST_Var, Σ]]] = Map(states(num - 1) ->
+        vars.foldLeft(List[Either[SST_Var, Σ]]()) { (x, y) => x ++ List(Left(y), Right(split)) })
+
+      SST(stateSet,
+        s0,
+        varSet,
+        delta.withDefaultValue(sink),
+        eta.withDefaultValue(varSet.map(x => x -> List[Either[SST_Var, Σ]]()).toMap),
+        f)
+    }
+
     cons match {
       case c: Concatenation[Σ] => _constraintToSST0(c)
       case t: TransducerConstraint[Σ] => _constraintToSST1(t)
+      case s: SSTConstraint[Σ] => _constraintToSST2(s)
     }
   }
 
@@ -219,7 +313,7 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
       if (consMap.contains(StringVariable(i)))
         consMap(StringVariable(i)).δ.map(r => (toSSTStates(r._1._1, i), r._1._2) -> toSSTStates(r._2, i))
       else
-        alphabets.map(c => ((states(i), c) -> states(i)))
+        charSet.map(c => ((states(i), c) -> states(i)))
     ).toMap
 
     val delta1 = List.range(0, num).flatMap(i => statesToFinal(states(i)).map(s => (s, split) -> statesToInit(states(i + 1))).toMap)
@@ -231,7 +325,7 @@ case class SSTBuilder[Σ](alphabets: Set[Σ],
         consMap(StringVariable(i)).δ.map(r =>
           (toSSTStates(r._1._1, i), r._1._2) -> vars.map(x => if (x.id == i) x -> List(Left(x), Right(i)) else x -> List(Left(x))).toMap)
       else
-        alphabets.map(c => (states(i), c) -> vars.map(x => if (x.id == i) x -> List(Left(x), Right(i)) else x -> List(Left(x))).toMap)
+        charSet.map(c => (states(i), c) -> vars.map(x => if (x.id == i) x -> List(Left(x), Right(i)) else x -> List(Left(x))).toMap)
     ).toMap
 
     val eta1: Map[(SST_State, Σ), Map[SST_Var, List[Either[SST_Var, Int]]]] = List.range(0, num).flatMap(i =>

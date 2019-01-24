@@ -6,7 +6,7 @@ import scalaz.Monoid
 
 case class TransducerFactory(charSet: Set[Char]) {
 
-  def replace(from: Char, to: String): Transducer[TransState, Char, List[Char]] = {
+  def replaceFirst(from: Char, to: String): Transducer[TransState, Char, List[Char]] = {
 
     implicit def monoid = strMonoid
 

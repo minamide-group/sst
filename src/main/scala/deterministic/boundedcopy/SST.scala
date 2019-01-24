@@ -132,9 +132,7 @@ case class SST[Q, Σ, Γ, X](
     SST(newStates, s0, vars, newDelta, newEta, newF)
   }
 
-  def rename(num: Int): SST[SST_State, Σ, Γ, SST_Var] = {
-
-    val sstName = "r" + num
+  def rename(sstName : String): SST[SST_State, Σ, Γ, SST_Var] = {
 
     val toNewState: Map[Q, SST_State] = states.toList.zipWithIndex.map(x => x._1 -> SST_State(x._2, sstName)).toMap
 

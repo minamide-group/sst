@@ -1,36 +1,45 @@
 package deterministic_test
 
-import deterministic.examples
-import deterministic.examples.SSTExamples
+import deterministic.factory.SSTFactory
 import org.scalatest.FlatSpec
 
 class SST_Test extends FlatSpec {
 
-  "half sst" should "run" in {
-    val sst = SSTExamples.getHalfSST()
-    val r = new scala.util.Random
-    for (_ <- 0 to 100) {
-      val length = r.nextInt(1000)
-      val str = getRandomString(length, List('a', 'b'))
-      val ret1 = sst.process(str)
-      assert(ret1._1 == true)
-      assert(ret1._3.mkString == str.indices.collect { case i if i % 2 == 0 => str(i) }.mkString)
+  val factory = SSTFactory(Set('a', 'b', 'c', 'd'))
+
+  "replaceAll" should "run" in {
+    val str1 = "abacabad"
+    val str2 = "a"
+    val sst = factory.replaceAll(str1, str2)
+    val chars = factory.charSet.toList
+
+    for(_ <- 0 to 10000){
+      val input = getRandomString(100, chars)
+      val output = sst.process(input)._3.mkString
+      val expected = input.replaceAll(str1, str2)
+      assert(output == expected)
     }
-    val ret2 = sst.process("abc")
-    assert(ret2._1 == false)
   }
 
-  "half sst" should "output function" in {
-    val sst = examples.SSTExamples.getHalfSST()
-    val r = new scala.util.Random
-    for (_ <- 0 to 100) {
-      val length = r.nextInt(1000) + 1
-      val str = getRandomString(length, List('a', 'b'))
-      val result = sst.trans(str)(sst.s0)
-      assert(sst.f.contains(result._1))
-      val outputStr = eval(sst.f(result._1), result._2).filter(x => x.isRight).map(x => x.right.get).mkString
-      assert(outputStr == str.indices.collect { case i if i % 2 == 0 => str(i) }.mkString)
+  "replaceFirst" should "run" in {
+    val str1 = "abacabad"
+    val str2 = "a"
+    val sst = factory.replaceFirst(str1, str2)
+    val chars = factory.charSet.toList
+
+    for(_ <- 0 to 10000){
+      val input = getRandomString(100, chars)
+      val output = sst.process(input)._3.mkString
+      val expected = input.replaceFirst(str1, str2)
+      assert(output == expected)
     }
+  }
+
+  "next" should "run" in {
+    val next = factory.getNext("acabacad")
+    val enext = factory.extendNext(next)
+    println(next)
+    println(enext)
   }
 
   def eval[X, Γ](expr: List[Either[X, Γ]], env: Map[X, List[Either[X, Γ]]]): List[Either[X, Γ]] = {

@@ -12,29 +12,29 @@ import scala.sys.process._
 
 object Checker {
 
-  def process(chars: String, rl: List[String], rg: List[String], ic: String, split: Char, log: Boolean): Boolean ={
-    if(log){
-      println("------start check at " + Calendar.getInstance.getTime+"---------")
-    }
-    val startTime = System.currentTimeMillis()
-    try{
-      val res= processInner(chars, rl, rg, ic, split, log)
-      if(log){
+  def process(chars: String, rl: List[String], rg: List[String], ic: String, split: Char, log: Boolean): Boolean = {
+    if (log) {
+      println("------start check at " + Calendar.getInstance.getTime + "---------")
+      val startTime = System.currentTimeMillis()
+      try {
+        val res = processInner(chars, rl, rg, ic, split, log)
         val timeCost = System.currentTimeMillis() - startTime
-        println("result: " + (if(res) "sat" else "unsat") )
-        println("total time cost : " + timeCost.toDouble/1000 + "s")
-        println("--------end check at " + Calendar.getInstance.getTime+"---------")
+        println("result: " + (if (res) "sat" else "unsat"))
+        println("total time cost : " + timeCost.toDouble / 1000 + "s")
+        println("--------end check at " + Calendar.getInstance.getTime + "---------")
         println()
         println()
-      }
-      res
-    }catch {
-      case e : Throwable => {
-        println(e.getMessage)
-        println("------------break at " + Calendar.getInstance.getTime+"---------")
-        false
+        res
+      } catch {
+        case e: Throwable => {
+          println(e.getMessage)
+          println("------------break at " + Calendar.getInstance.getTime + "---------")
+          false
+        }
       }
     }
+    else
+      processInner(chars, rl, rg, ic, split, log)
   }
 
   private def processInner(chars: String, rl: List[String], rg: List[String], ic: String, split: Char, log: Boolean): Boolean = {
@@ -130,7 +130,7 @@ object Checker {
       println("time cost: " + timeCost.toDouble / 1000 + "s")
       println()
     }
-    res
+    res.substring(0, 3)
   }
 
   def parseZ3Input(cons: String, sls: Set[(Map[Int, Int], Set[Map[Int, Int]])]): String = {
@@ -201,7 +201,7 @@ object Checker {
 
     file.delete()
 
-    output.substring(0, 3)
+    output
   }
 
 }
