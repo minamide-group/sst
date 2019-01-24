@@ -28,6 +28,8 @@ object Checker {
       } catch {
         case e: Throwable => {
           println(e.getMessage)
+          println(e.getCause)
+          e.printStackTrace()
           println("------------break at " + Calendar.getInstance.getTime + "---------")
           false
         }

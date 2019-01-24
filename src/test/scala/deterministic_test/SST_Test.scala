@@ -8,30 +8,33 @@ class SST_Test extends FlatSpec {
   val factory = SSTFactory(Set('a', 'b', 'c', 'd'))
 
   "replaceAll" should "run" in {
-    val str1 = "abacabad"
-    val str2 = "a"
-    val sst = factory.replaceAll(str1, str2)
     val chars = factory.charSet.toList
-
-    for(_ <- 0 to 10000){
-      val input = getRandomString(100, chars)
-      val output = sst.process(input)._3.mkString
-      val expected = input.replaceAll(str1, str2)
-      assert(output == expected)
+    for(_ <- 0 to 1000){
+      val str1 = getRandomString(5, chars)
+      val str2 = getRandomString(5, chars)
+      val sst = factory.replaceAll(str1, str2)
+      for(_<- 0 to 1000) {
+        val input = getRandomString(100, chars)
+        val output = sst.process(input)._3.mkString
+        val expected = input.replaceAll(str1, str2)
+        assert(output == expected)
+      }
     }
   }
 
   "replaceFirst" should "run" in {
-    val str1 = "abacabad"
-    val str2 = "a"
-    val sst = factory.replaceFirst(str1, str2)
     val chars = factory.charSet.toList
 
-    for(_ <- 0 to 10000){
-      val input = getRandomString(100, chars)
-      val output = sst.process(input)._3.mkString
-      val expected = input.replaceFirst(str1, str2)
-      assert(output == expected)
+    for(_ <- 0 to 1000){
+      val str1 = getRandomString(6, chars)
+      val str2 = getRandomString(3, chars)
+      val sst = factory.replaceFirst(str1, str2)
+      for(_ <- 0 to 1000) {
+        val input = getRandomString(100, chars)
+        val output = sst.process(input)._3.mkString
+        val expected = input.replaceFirst(str1, str2)
+        assert(output == expected)
+      }
     }
   }
 
