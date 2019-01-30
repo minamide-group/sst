@@ -44,11 +44,12 @@ object Checker {
     val intEmpty = intCons == null || intCons.isEmpty || intCons.toList.foldLeft(true) { (x, y) => x && y.isWhitespace }
     if (intEmpty && regCons.isEmpty)
       return true
-    val sst = getSST(charSet, split, relCons, regCons, log)
+    val sst_option = getSST(charSet, split, relCons, regCons, log)
 
-    if (sst.f.isEmpty || intEmpty)
-      !sst.f.isEmpty
+    if (sst_option.isEmpty || intEmpty)
+      sst_option.nonEmpty
     else {
+      val sst = sst_option.get
       val pi = getParikhImage(sst, log)
       val input = getZ3Input(intCons, pi, log)
       val output = getZ3Output(input, log)
@@ -78,12 +79,11 @@ object Checker {
       println("start constructing sst from constraints: ")
     }
     val startTime = System.currentTimeMillis()
-    val res = SSTBuilder(charSet, split).constraintsToSST(relCons, regCons)
+    val res = SSTBuilder(charSet, split).check(relCons, regCons)
     if (log) {
       val timeCost = System.currentTimeMillis() - startTime
-      println("states: " + res.states.size)
-      println("vars: " + res.vars.size)
-      println("transitions: " + res.δ.size)
+      if(res.nonEmpty)
+        res.get.print
       println("time cost: " + timeCost.toDouble / 1000 + "s")
       println()
     }

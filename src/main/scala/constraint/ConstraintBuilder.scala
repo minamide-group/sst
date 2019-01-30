@@ -23,7 +23,7 @@ case class ConstraintBuilder(chars: String, rl: List[String], rg: List[String], 
     Concatenation(StringVariable(t(0).toInt), list)
   }
 
-  private def toRelCons(str: String) = {
+  def toRelCons(str: String) = {
     val t = str.split(" ").filterNot(_.isEmpty)
     t(1).toLowerCase match {
       case "replacefirst" if (t(2).length == 1) => {
@@ -66,15 +66,15 @@ case class ConstraintBuilder(chars: String, rl: List[String], rg: List[String], 
     }
   }
 
-  private def toRegCons(str: String) = {
+  def toRegCons(str: String) = {
     val t = str.split(" ").filterNot(_.isEmpty)
-    t(0).toInt -> df.getDFA(t.drop(1).mkString)
+    RegCons(StringVariable(t(0).toInt), df.getDFA(t.drop(1).mkString))
   }
 
   def toConstraints: (String, List[RelCons], Set[RegCons[Char]], Set[Char]) = {
     (ic,
       rl.map(s => toRelCons(s)),
-      rg.map(s => toRegCons(s)).toMap.map(t => RegCons(StringVariable(t._1), t._2)).toSet,
+      rg.map(s => toRegCons(s)).toSet,
       charSet)
   }
 

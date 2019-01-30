@@ -178,6 +178,11 @@ case class SST[Q, Σ, Γ, X](
   }
 
   def printDetail {
+    def listA[A,B](list : List[Either[A,B]]) : List[Any] = list.collect{
+      case Left(a) => a
+      case Right(b) => b
+    }
+
     println("--------start----------")
     println("states: ")
     states.foreach(println)
@@ -188,13 +193,13 @@ case class SST[Q, Σ, Γ, X](
     vars.foreach(println)
     println("----------")
     println("output function:")
-    f.foreach(println)
+    f.map(t=> t._1-> listA(t._2)).foreach(println)
     println("----------")
     println("delta:")
     δ.foreach(println)
     println("----------")
     println("eta:")
-    η.foreach(println)
+    η.map(r=> r._1-> r._2.map(t=>t._1-> listA(t._2))).foreach(println)
     println("---------end-----------")
 
   }
