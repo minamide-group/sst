@@ -25,7 +25,7 @@ class Integrate_Test extends FlatSpec{
 
     val sstList = builder.constraintsToSSTs(cons, reg.toSet)
 
-    val x = builder.composeAndCheck(sstList)
+    val x = builder.composeSSTs(sstList)
 
     if(x.nonEmpty){
       val sst = x.get

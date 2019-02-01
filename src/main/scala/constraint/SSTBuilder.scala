@@ -143,23 +143,18 @@ case class SSTBuilder[Σ](charSet: Set[Σ],
   }
 
   private def renameToInt(sst: MySST[Σ]): MySST[Int] = {
-    val split_int = -1
-    val newF = sst.f.map(t =>
-      t._1 -> t._2.collect {
-        case Left(v) => Left(v)
-        case Right(c) => Right(split_int)
-      }
+    val newF = sst.f.map(t => t._1 ->
+      List.range(0, sst.vars.map(v => v.id).size).map(i => Left(SST_Var(i, t._1.name)))
     )
     val vink = sst.vars.map(x => x -> List[Out[Int]]()).toMap
     val newEta = sst.η.map(r =>
       r._1 -> r._2.map(t =>
         t._1 -> t._2.collect {
           case Left(v) => Left(v)
-          case Right(c) => Right(t._1.id)
+          case Right(_) => Right(t._1.id)
         }
       )
     ).withDefaultValue(vink)
-
     SST(sst.states, sst.s0, sst.vars, sst.δ, newEta, newF)
   }
 
@@ -234,7 +229,7 @@ case class SSTBuilder[Σ](charSet: Set[Σ],
     star(list, set, List())
   }
 
-  def composeAndCheck(ssts: List[MySST[Σ]]): Option[MySST[Int]] = {
+  def composeSSTs(ssts: List[MySST[Σ]]): Option[MySST[Int]] = {
     val list = ssts.dropRight(1)
     val last = renameToInt(ssts.last)
     if (list.isEmpty)
@@ -271,6 +266,4 @@ case class SSTBuilder[Σ](charSet: Set[Σ],
   }
 
   private def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = Composition.compose(sst1, sst2).trim.rename("r0")
-
-  def check(relCons: List[RelCons], regCons: Set[RegCons[Σ]]): Option[MySST[Int]] = composeAndCheck(constraintsToSSTs(relCons, regCons))
 }

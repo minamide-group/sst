@@ -132,7 +132,7 @@ case class SST[Q, Σ, Γ, X](
     SST(newStates, s0, vars, newDelta, newEta, newF)
   }
 
-  def rename(sstName : String): SST[SST_State, Σ, Γ, SST_Var] = {
+  def rename(sstName: String): SST[SST_State, Σ, Γ, SST_Var] = {
 
     val toNewState: Map[Q, SST_State] = states.toList.zipWithIndex.map(x => x._1 -> SST_State(x._2, sstName)).toMap
 
@@ -178,7 +178,7 @@ case class SST[Q, Σ, Γ, X](
   }
 
   def printDetail {
-    def listA[A,B](list : List[Either[A,B]]) : List[Any] = list.collect{
+    def listA[A, B](list: List[Either[A, B]]): List[Any] = list.collect {
       case Left(a) => a
       case Right(b) => b
     }
@@ -193,21 +193,18 @@ case class SST[Q, Σ, Γ, X](
     vars.foreach(println)
     println("----------")
     println("output function:")
-    f.map(t=> t._1-> listA(t._2)).foreach(println)
+    f.map(t => t._1 -> listA(t._2)).foreach(println)
     println("----------")
     println("delta:")
     δ.foreach(println)
     println("----------")
     println("eta:")
-    η.map(r=> r._1-> r._2.map(t=>t._1-> listA(t._2))).foreach(println)
+    η.map(r => r._1 -> r._2.map(t => t._1 -> listA(t._2))).foreach(println)
     println("---------end-----------")
 
   }
 
-  def toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = {
-
-    val startTime = System.currentTimeMillis()
-
+  private def _toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = {
     val alphabets: Set[Γ] = η.toList.flatMap(x => x._2.toList).flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet ++
       f.flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet
     val aToI: Map[Γ, Int] = (alphabets.toList.indices zip alphabets).toMap.map(x => x._2 -> x._1)
@@ -239,6 +236,8 @@ case class SST[Q, Σ, Γ, X](
       alphabets.map(c => c -> f(s0).filter(x => x.isRight).map(x => x.right.get).groupBy(identity).mapValues(_.size).withDefaultValue(0)(c)).toMap
       , Set.empty)) else r
   }
+
+  def toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = _toParikhImage
 
   def toMapTransducer: nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Map[Γ, Int]] = {
 

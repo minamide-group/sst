@@ -4,13 +4,15 @@ import java.io.{File, PrintWriter}
 import java.util.Calendar
 
 import constraint.regular.RegCons
-import constraint.relational.RelCons
+import constraint.relational.{Concatenation, RelCons}
 import constraint.vars.{SST_State, SST_Var}
 import deterministic.boundedcopy.SST
 
 import scala.sys.process._
 
 object Checker {
+
+  type MySST[X] = SST[SST_State, Char, X, SST_Var]
 
   def process(chars: String, rl: List[String], rg: List[String], ic: String, split: Char, log: Boolean): Boolean = {
     if (log) {
@@ -44,13 +46,15 @@ object Checker {
     val intEmpty = intCons == null || intCons.isEmpty || intCons.toList.foldLeft(true) { (x, y) => x && y.isWhitespace }
     if (intEmpty && regCons.isEmpty)
       return true
-    val sst_option = getSST(charSet, split, relCons, regCons, log)
 
+    val sstList = getSSTList(charSet, split, relCons, regCons, log)
+    val sst_option = getComposedSST(charSet, split, sstList, log)
     if (sst_option.isEmpty || intEmpty)
       sst_option.nonEmpty
     else {
       val sst = sst_option.get
-      val pi = getParikhImage(sst, log)
+
+      val pi = getParikhImage(sst, sstList, relCons, log)
       val input = getZ3Input(intCons, pi, log)
       val output = getZ3Output(input, log)
       !sst.f.isEmpty && output.substring(0, 3) == "sat"
@@ -74,15 +78,16 @@ object Checker {
     res
   }
 
-  def getSST(charSet: Set[Char], split: Char, relCons: List[RelCons], regCons: Set[RegCons[Char]], log: Boolean) = {
+  def getComposedSST(charSet: Set[Char], split: Char, sstList: List[MySST[Char]], log: Boolean) = {
     if (log) {
-      println("start constructing sst from constraints: ")
+      println("start composing ssts: ")
     }
     val startTime = System.currentTimeMillis()
-    val res = SSTBuilder(charSet, split).check(relCons, regCons)
+    val res = SSTBuilder(charSet, split).composeSSTs(sstList)
     if (log) {
-      val timeCost = System.currentTimeMillis() - startTime
-      if(res.nonEmpty)
+      val
+      timeCost = System.currentTimeMillis() - startTime
+      if (res.nonEmpty)
         res.get.print
       println("time cost: " + timeCost.toDouble / 1000 + "s")
       println()
@@ -90,12 +95,41 @@ object Checker {
     res
   }
 
-  def getParikhImage(sst: SST[SST_State, Char, Int, SST_Var], log: Boolean) = {
+  def getSSTList(charSet: Set[Char], split: Char, relCons: List[RelCons], regCons: Set[RegCons[Char]], log: Boolean) = {
+    if (log) {
+      println("start constructing sst from constraints: ")
+    }
+    val startTime = System.currentTimeMillis()
+    val res = SSTBuilder(charSet, split).constraintsToSSTs(relCons, regCons)
+    if (log) {
+      val timeCost = System.currentTimeMillis() - startTime
+      println("sst num: " + res.size)
+      res.foreach(_.print)
+      println("time cost: " + timeCost.toDouble / 1000 + "s")
+      println()
+    }
+    res
+  }
+
+  def getParikhImage(sst: MySST[Int], sstList: List[MySST[Char]], relCons: List[RelCons], log: Boolean) = {
+    def f(idx: Int, idxLength: Map[Int, Int], charNum: Int, idxNum: Map[Int, Int]) = {
+      idxLength + (idx -> (charNum + idxNum.map(t => t._2 * idxLength(t._1)).reduce(_ + _)))
+    }
+
     if (log) {
       println("start constructing Parikh image from sst: ")
     }
     val startTime = System.currentTimeMillis()
-    val res = sst.toParikhImage
+    val res0 = sst.toParikhImage
+    val res = relCons.last match {
+      case c: Concatenation[Char] if sstList.size == relCons.size => {
+        val charNum = c.list.collect { case Right(l) => l.size }.reduce(_ + _)
+        val varsIdxNum = c.list.collect { case Left(v) => v.id }.groupBy(identity).map(t => t._1 -> t._2.size)
+        res0.map(linearSet => (f(c.left.id, linearSet._1, charNum, varsIdxNum), linearSet._2.map(vec => f(c.left.id, vec, 0, varsIdxNum))))
+      }
+      case _ => res0
+    }
+
     if (log) {
       val timeCost = System.currentTimeMillis() - startTime
       println("Parikh image linear sets: " + res.size)
@@ -135,7 +169,7 @@ object Checker {
     res.substring(0, 3)
   }
 
-  def parseZ3Input(cons: String, sls: Set[(Map[Int, Int], Set[Map[Int, Int]])]): String = {
+  private def parseZ3Input(cons: String, sls: Set[(Map[Int, Int], Set[Map[Int, Int]])]): String = {
 
     def getStrName(i: Int) = "len" + i
 
@@ -165,17 +199,30 @@ object Checker {
 
     val declare_1 = intVars.map(i => "(declare-const " + getIntName(i) + " Int)").mkString("\n")
 
-    val declare_2 = List.range(0, list.size).flatMap(i => {
-      List.range(0, list(i)._2.size).map(j => "(declare-const " + getVarName(i, j) + " Int)")
-    }).mkString("\n")
+    val vecVars: List[(Int, Int)] = List.range(0, list.size).flatMap(i => {
+      List.range(0, list(i)._2.size).map(j => (i, j))
+    })
 
-    val formula_0 = List.range(0, list.size).map(i =>
-      strVars.map(x =>
-        getLinear(i, list(i)._1(x), getStrName(x), List.range(0, list(i)._2.size).map(j => j -> list(i)._2(j)(x)).toMap)
-      ).foldLeft("true") { (p, q) => "(and " + p + " " + q + ")" }
-    ).foldLeft("false") { (p, q) => "(or " + p + " " + q + ")" }
+    val declare_2 = vecVars.map(t => "(declare-const " + getVarName(t._1, t._2) + " Int)").mkString("\n")
 
-    val formula = if (cons.isEmpty) formula_0 else "(and " + formula_0 + " " + cons + ")"
+    val parikh = if (list.isEmpty) "" else
+      List.range(0, list.size).map(i =>
+        strVars.map(x =>
+          getLinear(i, list(i)._1(x), getStrName(x), List.range(0, list(i)._2.size).map(j => j -> list(i)._2(j)(x)).toMap)
+        ).foldLeft("true") { (p, q) => "(and " + p + " " + q + ")" }
+      ).foldLeft("false") { (p, q) => "(or " + p + " " + q + ")" }
+
+    val posVar = if (strVars.size + vecVars.size == 0) "" else
+      (vecVars.map(t => getVarName(t._1, t._2)) ++ strVars.map(getStrName(_))).map(v => "(<= 0 " + v + ")").foldLeft("true") { (p, q) => "(and " + p + " " + q + ")" }
+
+    val formulaList = List(posVar, parikh, cons).filter(_.nonEmpty)
+
+    val formula = formulaList.size match {
+      case 0 => "true"
+      case 1 => formulaList(0)
+      case 2 => "(and " + formulaList(0) + " " + formulaList(1) + ")"
+      case 3 => "(and (and " + formulaList(0) + " " + formulaList(1) + ") " + formulaList(2) + ")"
+    }
 
     val declare_sentence = declare_0 + "\n" + declare_1 + "\n" + declare_2
 
@@ -186,7 +233,7 @@ object Checker {
     declare_sentence + "\n" + assert_sentence + "\n" + end_sentence
   }
 
-  def executeZ3(input: String): String = {
+  private def executeZ3(input: String): String = {
 
     val path = System.getProperty("user.dir") + "\\temp"
 
@@ -205,5 +252,4 @@ object Checker {
 
     output
   }
-
 }

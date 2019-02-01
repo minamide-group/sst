@@ -47,15 +47,15 @@ class StringToConstraints_Test extends FlatSpec {
   }
 
   "test4" should "run" in {
-    val ic = "(and (= len1 3) (= len2 7) )"
-    val rg = List("0 ababc")
+    val ic = "(> len1 len0)"
+    val rg = List()
     val rl = List(
-      "1 replace abc b 0",
-      "2 replace b abc 1")
+      "1 replace aa b 0")
     val chars = "abc"
+    val log = true
+    val split = '#'
 
-    val res = Checker.process(chars, rl, rg, ic, '#', true)
-
-    assert(res)
+    val res = Checker.process(chars, rl, rg, ic, split, log)
+    assert(!res)
   }
 }
