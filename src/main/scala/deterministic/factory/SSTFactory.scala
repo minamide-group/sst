@@ -1,6 +1,7 @@
 package deterministic.factory
 
-import constraint.vars.{SST_State, SST_Var}
+import constraint.vars.{FAState, SST_State, SST_Var}
+import deterministic.DFA
 import deterministic.boundedcopy.SST
 
 case class SSTFactory(charSet: Set[Char]) {

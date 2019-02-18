@@ -99,10 +99,15 @@ object Composition {
     }
 
     def innerEtaHat(f: Trans)(q2: Q2, xbs: List[Either[X, B]]): List[Either[(Q2, X), Update2]] = {
-      xbs match {
-        case (xb :: xbs) => innerEta(q2, xb) ++ innerEtaHat(f)(innerDelta(f)(q2, xb), xbs)
-        case _ => List()
+
+      def _innerEtaHat(f : Trans, q2: Q2, xbs: List[Either[X, B]], res : List[Either[(Q2, X), Update2]]) : List[Either[(Q2, X), Update2]] ={
+        xbs match {
+          case (xb :: xbs) => _innerEtaHat(f, innerDelta(f)(q2, xb), xbs, res ++ innerEta(q2, xb))
+          case _ => res
+        }
       }
+
+      _innerEtaHat(f, q2, xbs, List())
     }
 
     def largeDelta(f: Trans, m: Update1): Trans = {

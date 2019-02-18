@@ -19,7 +19,7 @@ class ConcatToSST_Test extends FlatSpec with PrivateMethodTester{
     val s2 = StringVariable(2)
 
     val concat = Concatenation(s4, List(Left(s0), Right("aba".toList), Left(s2) ))
-    val sst = builder.getOne(concat, Set())
+    val sst = builder.getOne(concat, Map())
 
     sst.printDetail
   }
@@ -35,7 +35,7 @@ class ConcatToSST_Test extends FlatSpec with PrivateMethodTester{
     val r3 = "3 b*a"
     val regCons = Set(r0, r3).map(str=> cBuilder.toRegCons(str))
 
-    val sst = builder.getOne(concat, regCons)
+    val sst = builder.getOne(concat, regCons.map(t=> t.x.id->t.R).toMap)
 
     sst.printDetail
   }

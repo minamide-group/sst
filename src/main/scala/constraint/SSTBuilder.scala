@@ -158,14 +158,14 @@ case class SSTBuilder[Σ](charSet: Set[Σ],
     SST(sst.states, sst.s0, sst.vars, sst.δ, newEta, newF)
   }
 
-  private def replaceAllDFA(sst: MySST[Σ], list: List[RegCons[Σ]], name: String): MySST[Σ] = {
+  private def replaceAllDFA(sst: MySST[Σ], list: List[(Int, DFA[FAState, Σ])], name: String): MySST[Σ] = {
     list match {
-      case x :: rest => replaceAllDFA(replace(sst, SST_State(x.x.id, name), x.R), rest, name)
+      case x :: rest => replaceAllDFA(replace(sst, SST_State(x._1, name), x._2), rest, name)
       case Nil => sst
     }
   }
 
-  def getOne(relCons: RelCons, set: Set[RegCons[Σ]]): MySST[Σ] = {
+  def getOne(relCons: RelCons, varDFA: Map[Int, DFA[FAState, Σ]]): MySST[Σ] = {
     val num = relCons.getLeftIdx
     val name = "sst" + num
     val sst0 = getStem(num, name)
@@ -188,19 +188,19 @@ case class SSTBuilder[Σ](charSet: Set[Σ],
       case t: TransducerConstraint[Σ] => replace(sst0, SST_State(t.right2.id, name), t.right1)
       case s: SSTConstraint[Σ] => replace(sst0, SST_State(s.right2.id, name), s.right1)
     }
-    val sst2 = replaceAllDFA(sst1, set.toList, name)
+    val sst2 = replaceAllDFA(sst1, varDFA.toList, name)
     val sst3 = addDefault(sst2)
     sst3
   }
 
-  private def getLast(num: Int, set: Set[RegCons[Σ]]): MySST[Σ] = {
+  private def getLast(num: Int, varDFA: Map[Int, DFA[FAState, Σ]]): MySST[Σ] = {
     val sstName = "sst" + num
-    addDefault(replaceAllDFA(getStem(num, sstName), set.toList, sstName))
+    addDefault(replaceAllDFA(getStem(num, sstName), varDFA.toList, sstName))
   }
 
-  private def addDefault(sst: MySST[Σ]): MySST[Σ] = {
+  private def addDefault[X](sst: MySST[X]): MySST[X] = {
     val sink = SST_State(-1, sst.s0.name + "sink")
-    val vink = sst.vars.map(x => x -> listC()).toMap
+    val vink = sst.vars.map(x => x -> List[Out[X]]()).toMap
     SST(sst.states + sink, sst.s0, sst.vars,
       sst.δ.withDefaultValue(sink),
       sst.η.withDefaultValue(vink),
@@ -208,25 +208,50 @@ case class SSTBuilder[Σ](charSet: Set[Σ],
     )
   }
 
+  private def addDefault(dfa: DFA[FAState, Σ]): DFA[FAState, Σ] = {
+    val sink = FAState(-1)
+    DFA(dfa.states + sink, dfa.s0, dfa.δ.withDefaultValue(sink), dfa.f)
+  }
+
+  private def addDefault(trans: Transducer[TransState, Σ, List[Σ]]): Transducer[TransState, Σ, List[Σ]] = {
+    val sink = TransState(-1)
+    implicit def e = trans.e
+    Transducer(trans.states + sink, trans.s0, trans.δ.withDefaultValue(sink), trans.η, trans.f)
+  }
+
   def constraintsToSSTs(list: List[RelCons], set: Set[RegCons[Σ]]): List[MySST[Σ]] = {
-    def star(relCons: List[RelCons], set: Set[RegCons[Σ]], res: List[MySST[Σ]]): List[MySST[Σ]] = {
+    def star(relCons: List[RelCons], varDFA: Map[Int, DFA[FAState, Σ]], res: List[MySST[Σ]]): List[MySST[Σ]] = {
       relCons match {
         case x :: rest => {
           val leftId = x.getLeftIdx
-          val regCons = x match {
-            //Todo: optimized with intersection of DFA and SST
-            case _: Concatenation[Σ] => set.filter(p => p.x.id < leftId)
-            case t: TransducerConstraint[Σ] => set.filter(p => p.x.id < leftId && p.x.id != t.right2.id)
-            case s: SSTConstraint[Σ] => set.filter(p => p.x.id < leftId && p.x.id != s.right2.id)
+          x match {
+            case _: Concatenation[Σ] => {
+              val regCons = varDFA.filter(p => p._1 < leftId)
+              star(rest, varDFA.filterNot(p => p._1 < leftId), res ::: List(getOne(x, regCons)))
+            }
+            case t: TransducerConstraint[Σ] => {
+              val regCons = varDFA.filter(p => p._1 < leftId && p._1 != t.right2.id)
+              val y = if (varDFA.contains(t.right2.id))
+                TransducerConstraint(t.left, addDefault(t.right1).intersect(addDefault(varDFA(t.right2.id))).trim.rename, t.right2)
+              else x
+              star(rest, varDFA.filterNot(p => p._1 < leftId), res ::: List(getOne(y, regCons)))
+            }
+            case s: SSTConstraint[Σ] => {
+              val regCons = varDFA.filter(p => p._1 < leftId && p._1 != s.right2.id)
+              val y = if (varDFA.contains(s.right2.id))
+                SSTConstraint(s.left, compose(addDefault(dfaToSST(varDFA(s.right2.id))), addDefault(s.right1)), s.right2)
+              else x
+              star(rest, varDFA.filterNot(p => p._1 < leftId), res ::: List(getOne(y, regCons)))
+            }
           }
-          star(rest, set -- regCons, res ::: List(getOne(x, regCons)))
         }
-        case Nil if set.isEmpty => res
-        case Nil => res ::: List(getLast(list.last.getLeftIdx + 1, set))
+        case Nil if varDFA.isEmpty => res
+        case Nil => res ::: List(getLast(list.last.getLeftIdx + 1, varDFA))
       }
     }
 
-    star(list, set, List())
+    val varDFA = set.map(t => t.x.id -> t.R).toMap
+    star(list, varDFA, List())
   }
 
   def composeSSTs(ssts: List[MySST[Σ]]): Option[MySST[Int]] = {
@@ -252,7 +277,7 @@ case class SSTBuilder[Σ](charSet: Set[Σ],
               None
           }
           case x :: rest => {
-            val sst1 = compose(sst, x)
+            val sst1 = addDefault(compose(sst, x))
             if (sst1.f.nonEmpty)
               star(sst1, rest, last)
             else
@@ -261,9 +286,22 @@ case class SSTBuilder[Σ](charSet: Set[Σ],
         }
       }
 
-      star(compose(list(0), list(1)), list.drop(2), last)
+      star(addDefault(compose(list(0), list(1))), list.drop(2), last)
     }
   }
 
   private def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = Composition.compose(sst1, sst2).trim.rename("r0")
+
+  def dfaToSST(dfa: DFA[FAState, Σ]): MySST[Σ] = {
+    val toNewStates = dfa.states.map(s => s -> SST_State(s.id, "d")).toMap
+    val states = dfa.states.map(toNewStates(_))
+    val s0 = toNewStates(dfa.s0)
+    val x = SST_Var(0, "d")
+    val vars = Set(x)
+    val delta = dfa.δ.map(r => (toNewStates(r._1._1), r._1._2) -> toNewStates(r._2))
+    val eta = delta.map(r => r._1 -> Map(x -> listC(x, r._1._2)))
+    val f = dfa.f.map(q => toNewStates(q) -> listC(x)).toMap
+    SST(states, s0, vars, delta, eta, f)
+  }
+
 }

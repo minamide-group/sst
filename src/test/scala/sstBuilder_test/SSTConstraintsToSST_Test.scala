@@ -20,8 +20,20 @@ class SSTConstraintsToSST_Test extends FlatSpec{
     val s3 = StringVariable(3)
     val cons = SSTConstraint(s4, sst0, s3)
 
-    val sst = builder.getOne(cons, Set())
+    val sst = builder.getOne(cons, Map())
     sst.printDetail
   }
 
+  "sR" should "run" in {
+    val sst0 = factory.reverse
+    val s4 = StringVariable(4)
+    val s3 = StringVariable(3)
+
+    val cons = SSTConstraint(s4, sst0, s3)
+    val r2 = "3 b*a"
+    val regCons = Set(r2).map(str => cBuilder.toRegCons(str))
+    val sstList = builder.constraintsToSSTs(List(cons), regCons)
+
+    sstList(0).printDetail
+  }
 }

@@ -1,6 +1,7 @@
 package deterministic.boundedcopy
 
 import constraint.vars.{SST_State, SST_Var}
+import deterministic.DFA
 import expression._
 import expression.regex._
 import scalaz.Monoid
@@ -77,7 +78,6 @@ case class SST[Q, Σ, Γ, X](
   def trim: SST[Q, Σ, Γ, X] = trimStates.trimVars
 
   private def trimVars: SST[Q, Σ, Γ, X] = {
-
     def star[X](next: X => Set[X])(v1: Set[X]): Set[X] = {
       val v2 = v1.flatMap(next) ++ v1
       if (v1 == v2) v1
@@ -87,11 +87,9 @@ case class SST[Q, Σ, Γ, X](
     def usedVars: Set[X] = {
       def app(xs: Map[X, Set[X]], ys: Map[X, Set[X]]): Map[X, Set[X]] = vars.map(v => (v, xs.getOrElse(v, Set()) ++ ys.getOrElse(v, Set()))).toMap
 
-      val labelx: Iterable[Map[X, Set[X]]] = η.map(_._2).map {
-        _.map { case (x, y) => (x, y.collect { case Left(x) => x }.toSet) }
-      }
-      val label: X => Set[X] = labelx.foldLeft(Map[X, Set[X]]()) { (acc, i) => app(acc, i) }
-      val revlabel: Map[X, Set[X]] = vars.map { x => (x, vars.filter { y => label(y)(x) }) }.toMap
+      val labelx: List[Map[X, Set[X]]] = η.toList.map(_._2.map { case (x, y) => (x, y.collect { case Left(x) => x }.toSet) })
+      val label: Map[X, Set[X]] = labelx.foldLeft(Map[X, Set[X]]()) { (acc, i) => app(acc, i) }
+      val revlabel: Map[X, Set[X]] = vars.map { x => (x, vars.filter { y =>label.withDefaultValue(Set())(y)(x)}) }.toMap
       val use: Set[X] = f.flatMap(_._2).collect { case Left(x) => x }.toSet
       val nonempty: Set[X] = η.toList.flatMap(_._2).filter { r => r._2.exists(_.isRight) }.map(_._1).toSet
 
@@ -109,32 +107,16 @@ case class SST[Q, Σ, Γ, X](
     SST(states, s0, newVars, δ, newEta, newF)
   }
 
+  def toDFA = DFA(states, s0, δ, f.keySet)
+
   private def trimStates: SST[Q, Σ, Γ, X] = {
-
-    def star(res: Set[Q], next: Map[Q, Set[Q]]): Set[Q] = {
-      val newStates = res.flatMap(q => next(q)).filterNot(q => res(q))
-      if (newStates.isEmpty) res
-      else star(res ++ newStates, next)
-    }
-
-    val next0: Map[Q, Set[Q]] = δ.toSet.map((r: ((Q, Σ), Q)) => (r._1._1, r._2)).groupBy(r => r._1: Q).map(r => r._1 -> r._2.map(_._2))
-
-    val reachedFromS0: Set[Q] = star(Set(s0), next0)
-
-    val newF = f.filter(r => reachedFromS0(r._1))
-
-    val newStates = reachedFromS0
-
-    val newDelta = δ.filter(r => newStates(r._1._1) && newStates(r._2))
-
-    val newEta = η.filter(r => newDelta.contains(r._1))
-
-    SST(newStates, s0, vars, newDelta, newEta, newF)
+    val res0 = toDFA.trim
+    SST(res0.states, res0.s0, vars, res0.δ, η.filter(r => res0.δ.contains(r._1)), f.filter(r => res0.states(r._1)))
   }
 
   def rename(sstName: String): SST[SST_State, Σ, Γ, SST_Var] = {
 
-    val toNewState: Map[Q, SST_State] = states.toList.zipWithIndex.map(x => x._1 -> SST_State(x._2, sstName)).toMap
+    val toNewState: Map[Q, SST_State] = (states + s0).toList.zipWithIndex.map(x => x._1 -> SST_State(x._2, sstName)).toMap
 
     val toNewVar: Map[X, SST_Var] = vars.toList.zipWithIndex.map(x => x._1 -> SST_Var(x._2, sstName)).toMap
 

@@ -1,5 +1,6 @@
 package deterministic_test
 
+import constraint.vars.{SST_State, SST_Var}
 import deterministic.boundedcopy.{Composition, SST}
 import org.scalatest.FlatSpec
 
@@ -7,6 +8,7 @@ class Composition2_Test extends FlatSpec{
 
   class S(i : Int)
   class X(i : Int)
+  type MySST[X] = SST[SST_State, Char, X, SST_Var]
 
   def getS3:SST[S,Char,Char,X] = {
     val s = List.range(0,4).map(i=>new S(i))
@@ -657,28 +659,38 @@ class Composition2_Test extends FlatSpec{
     )
   }
 
+  def addDefault[X](sst: MySST[X]): MySST[X] = {
+    val sink = SST_State(-1, sst.s0.name + "sink")
+    val vink = sst.vars.map(x => x -> List[Either[SST_Var, X]]()).toMap
+    SST(sst.states + sink, sst.s0, sst.vars,
+      sst.δ.withDefaultValue(sink),
+      sst.η.withDefaultValue(vink),
+      sst.f
+    )
+  }
+
   "1st" should "run" in {
-    //108 states, 7 vars
-    //5.693s
+    //43 states, 7 vars
+    //4.772s
     val s3 = getS3f
     val s4 = getS4
     val s5 = getS5f_1st
 
-    val s34 = Composition.compose(s3,s4).trim.rename("r11")
+    val s34 = addDefault(Composition.compose(s3,s4).rename("r11"))
     s34.print
-    val s345 = Composition.compose(s34, s5).trim.rename("r12")
+    val s345 = Composition.compose(s34, s5).rename("r12")
     s345.print
   }
 
   "2nd" should "run" in {
-    //475 states
+    //63 states
     //7  vars
-    //22.953s
+    //22.235s
     val s3 = getS3
     val s4 = getS4
     val s5 = getS5f_2nd
 
-    val s34 = Composition.compose(s3,s4).trim.rename("r11")
+    val s34 = addDefault(Composition.compose(s3,s4).trim.rename("r11"))
     s34.print
     val s345 = Composition.compose(s34, s5).trim.rename("r12")
     s345.print

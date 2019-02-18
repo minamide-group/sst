@@ -32,7 +32,6 @@ case class DFA[Q, Σ](
   }
 
   def trim: DFA[Q, Σ] = {
-
     def star(s: Set[Q], rules: Map[Q, Set[Q]]): Set[Q] = {
       val newS = s.flatMap(q => rules.withDefaultValue(Set())(q))
       if (newS ++ s == s) s
@@ -40,15 +39,10 @@ case class DFA[Q, Σ](
     }
 
     val next0 = δ.groupBy(_._1._1).map(t => t._1 -> t._2.map(_._2).toSet)
-
     val reachedFromS0 = star(Set(s0), next0)
-
     val next = next0.filter(p => reachedFromS0(p._1)).map(p => p._1 -> p._2.filter(q => reachedFromS0(q))).filterNot(_._2.isEmpty)
-
     val newF = f.intersect(reachedFromS0)
-
     val reachToFinal = reachedFromS0.filterNot(q => star(Set(q), next).intersect(newF).isEmpty)
-
     DFA(
       states.intersect(reachToFinal),
       s0,
@@ -97,4 +91,23 @@ case class DFA[Q, Σ](
     )
   }
 
+  def intersect[Q1](dfa0: DFA[Q1, Σ]): DFA[(Q, Q1), Σ] = {
+    type S = (Q, Q1)
+
+    def getStatesAndDelta(list: List[S], res1: Set[S], res2: Map[(S, Σ), S]): (Set[S], Map[(S, Σ), S]) = {
+      list match {
+        case s :: rest => {
+          val newRules = δ.filter(r=>r._1._1==s._1).map(r=> (s, r._1._2)-> (r._2, dfa0.δ(s._2, r._1._2)))
+          val newStates = newRules.toList.map(_._2).toSet -- res1
+          getStatesAndDelta(rest ::: newStates.toList, res1 ++ newStates, res2 ++ newRules)
+        }
+        case Nil => (res1, res2)
+      }
+    }
+    val init = (s0, dfa0.s0)
+    val (states, rules) = getStatesAndDelta(List(init), Set(init), Map())
+    val accept = states.filter(s => f(s._1) && dfa0.f(s._2))
+
+    DFA(states, init, rules, accept)
+  }
 }
