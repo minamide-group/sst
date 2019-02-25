@@ -77,26 +77,33 @@ case class SST[Q, Σ, Γ, X](
 
   def trim: SST[Q, Σ, Γ, X] = trimStates.trimVars
 
+  private def trimStates: SST[Q, Σ, Γ, X] = {
+    val res0 = toDFA.trim
+    SST(res0.states, res0.s0, vars, res0.δ, η.filter(r => res0.δ.contains(r._1)), f.filter(r => res0.states(r._1)))
+  }
+
+  def toDFA = DFA(states, s0, δ, f.keySet)
+
   private def trimVars: SST[Q, Σ, Γ, X] = {
-    def star[X](next: X => Set[X])(v1: Set[X]): Set[X] = {
-      val v2 = v1.flatMap(next) ++ v1
-      if (v1 == v2) v1
-      else star(next)(v2)
-    }
+    //    def star[X](next: X => Set[X])(v1: Set[X]): Set[X] = {
+    //      val v2 = v1.flatMap(next) ++ v1
+    //      if (v1 == v2) v1
+    //      else star(next)(v2)
+    //    }
 
-    def usedVars: Set[X] = {
-      def app(xs: Map[X, Set[X]], ys: Map[X, Set[X]]): Map[X, Set[X]] = vars.map(v => (v, xs.getOrElse(v, Set()) ++ ys.getOrElse(v, Set()))).toMap
+    //    def usedVars: Set[X] = {
+    //      def app(xs: Map[X, Set[X]], ys: Map[X, Set[X]]): Map[X, Set[X]] = vars.map(v => (v, xs.getOrElse(v, Set()) ++ ys.getOrElse(v, Set()))).toMap
+    //
+    //      val labelx: List[Map[X, Set[X]]] = η.toList.map(_._2.map { case (x, y) => (x, y.collect { case Left(x) => x }.toSet) })
+    //      val label: Map[X, Set[X]] = labelx.foldLeft(Map[X, Set[X]]()) { (acc, i) => app(acc, i) }
+    //      val revlabel: Map[X, Set[X]] = vars.map { x => (x, vars.filter { y =>label.withDefaultValue(Set())(y)(x)}) }.toMap
+    //      val use: Set[X] = f.flatMap(_._2).collect { case Left(x) => x }.toSet
+    //      val nonempty: Set[X] = η.toList.flatMap(_._2).filter { r => r._2.exists(_.isRight) }.map(_._1).toSet
+    //
+    //      star(label)(use).intersect(star(revlabel)(nonempty))
+    //    }
 
-      val labelx: List[Map[X, Set[X]]] = η.toList.map(_._2.map { case (x, y) => (x, y.collect { case Left(x) => x }.toSet) })
-      val label: Map[X, Set[X]] = labelx.foldLeft(Map[X, Set[X]]()) { (acc, i) => app(acc, i) }
-      val revlabel: Map[X, Set[X]] = vars.map { x => (x, vars.filter { y =>label.withDefaultValue(Set())(y)(x)}) }.toMap
-      val use: Set[X] = f.flatMap(_._2).collect { case Left(x) => x }.toSet
-      val nonempty: Set[X] = η.toList.flatMap(_._2).filter { r => r._2.exists(_.isRight) }.map(_._1).toSet
-
-      star(label)(use).intersect(star(revlabel)(nonempty))
-    }
-
-    val newVars = usedVars
+    val newVars = usedVars.intersect(nonEmptyVars)
 
     val newEta = η.map(
       r => r._1 -> r._2.filter(x => newVars(x._1)).map(x => x._1 -> x._2.filter(e => (e.isRight) || (e.isLeft && newVars(e.left.get))))
@@ -107,11 +114,66 @@ case class SST[Q, Σ, Γ, X](
     SST(states, s0, newVars, δ, newEta, newF)
   }
 
-  def toDFA = DFA(states, s0, δ, f.keySet)
+  def usedVars: Set[X] = {
+    val simpleDelta : Map[(Q, Q), Map[X, Set[X]]] = δ.map(r => ((r._1._1, r._2), r._1._2, η(r._1))).groupBy(_._1).map(t=> {
+      def getNext(queue : List[Map[X, Set[X]]], res : Map[X, Set[X]]):Map[X, Set[X]] = {
+        queue match {
+          case Nil => res
+          case m :: rest => getNext(rest, vars.map(x=> x-> (m.withDefaultValue(Set())(x) ++ res.withDefaultValue(Set())(x)) ).toMap)
+        }
+      }
 
-  private def trimStates: SST[Q, Σ, Γ, X] = {
-    val res0 = toDFA.trim
-    SST(res0.states, res0.s0, vars, res0.δ, η.filter(r => res0.δ.contains(r._1)), f.filter(r => res0.states(r._1)))
+      t._1 -> getNext(t._2.map(_._3).toList.map(_.map(tt=> tt._1-> tt._2.collect{case Left(x)=>x}.toSet)), Map())
+    })
+
+    def search(queue: List[(Q, Set[X])], qToXs: Map[Q, Set[X]]): Map[Q, Set[X]] = {
+      queue match {
+        case Nil => qToXs
+        case ss :: rest => {
+          val newS: Map[Q, Set[X]] = simpleDelta.filter(r => r._1._2 == ss._1).map(r =>
+            (r._1._1, ss._2.flatMap(x => r._2(x) ++ ss._2 ))
+          ).filterNot(t => qToXs.contains(t._1) && t._2.subsetOf(qToXs(t._1)))
+
+          search(rest ::: newS.toList, states.map(q => q -> (newS.withDefaultValue(Set())(q) ++ qToXs.withDefaultValue(Set())(q))).toMap)
+        }
+      }
+    }
+
+    val queue: List[(Q, Set[X])] = f.map(t => (t._1, t._2.collect { case Left(x) => x }.toSet)).toList
+    search(queue, queue.toMap).withDefaultValue(Set[X]())(s0)
+  }
+
+  def nonEmptyVars: Set[X] = {
+    val simpleDelta : Map[(Q, Q), Map[X, (Set[X], Set[Γ])]] = δ.map(r => ((r._1._1, r._2), r._1._2, η(r._1))).groupBy(_._1).map(t=> {
+      def getNext(queue : List[Map[X, (Set[X], Set[Γ])]], res : Map[X, (Set[X], Set[Γ])]):Map[X, (Set[X], Set[Γ])] = {
+        queue match {
+          case Nil => res
+          case m :: rest => getNext(rest, vars.map(x=>
+            x->(m.withDefaultValue((Set(), Set()))(x)._1 ++ res.withDefaultValue((Set(), Set()))(x)._1,
+                m.withDefaultValue((Set(), Set()))(x)._2 ++ res.withDefaultValue((Set(), Set()))(x)._2)
+            ).toMap)
+        }
+      }
+
+      t._1 -> getNext(t._2.map(_._3).toList.map(_.map(tt=>
+        tt._1-> (tt._2.collect{case Left(x)=>x}.toSet, tt._2.collect{case Right(c)=>c}.toSet))), Map())
+    })
+
+    def search(queue: List[(Q, Set[X])], qToXs: Map[Q, Set[X]]): Map[Q, Set[X]] = {
+      queue match {
+        case Nil => qToXs
+        case ss :: rest => {
+          val newS: Map[Q, Set[X]] = simpleDelta.filter(r => r._1._1 == ss._1).map(r => {
+            (r._1._2, r._2.filter(t => t._2._2.nonEmpty || t._2._1.intersect(ss._2).nonEmpty).map(_._1).toSet ++ ss._2)
+          }).filterNot(t => qToXs.contains(t._1) && t._2.subsetOf(qToXs(t._1)))
+
+          search(rest ::: newS.toList, states.map(q => q -> (newS.withDefaultValue(Set())(q) ++ qToXs.withDefaultValue(Set())(q))).toMap)
+        }
+      }
+    }
+
+    val queue: List[(Q, Set[X])] = List((s0, Set()))
+    search(queue, queue.toMap).withDefaultValue(Set()).filter(t => f.contains(t._1)).foldLeft(Set[X]()) { (x, y) => x ++ y._2 }
   }
 
   def rename(sstName: String): SST[SST_State, Σ, Γ, SST_Var] = {
@@ -186,6 +248,8 @@ case class SST[Q, Σ, Γ, X](
 
   }
 
+  def toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = _toParikhImage
+
   private def _toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = {
     val alphabets: Set[Γ] = η.toList.flatMap(x => x._2.toList).flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet ++
       f.flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet
@@ -218,8 +282,6 @@ case class SST[Q, Σ, Γ, X](
       alphabets.map(c => c -> f(s0).filter(x => x.isRight).map(x => x.right.get).groupBy(identity).mapValues(_.size).withDefaultValue(0)(c)).toMap
       , Set.empty)) else r
   }
-
-  def toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = _toParikhImage
 
   def toMapTransducer: nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Map[Γ, Int]] = {
 

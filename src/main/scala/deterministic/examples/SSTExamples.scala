@@ -127,4 +127,46 @@ object SSTExamples {
     SST(Set(q0, q_sink), q0, Set(x0, x1), delta, eta, f)
   }
 
+  def trimable() = {
+    val q0 = SST_State(0, "r")
+    val q1 = SST_State(1, "r")
+    val q2 = SST_State(2, "r")
+
+    val x = List.range(0, 7).map(i => SST_Var(i, "r"))
+
+    val delta = Map(
+      (q0, 'a') -> q1,
+      (q1, 'a') -> q2,
+      (q1, 'b') -> q0,
+      (q2, 'a') -> q1,
+      (q2, 'b') -> q2
+    )
+
+    val base = x.map(v=> v->List(Left(v))).toMap
+
+    val eta = Map(
+      (q0, 'a') -> (base ++ Map(
+        x(1) -> List(Left(x(1)), Right('a'))
+      )),
+
+      (q1, 'a') -> (base ++ Map(
+        x(2) -> List(Left(x(1)))
+      )),
+
+      (q1, 'b') ->  (base ++ Map(
+        x(1) -> List(Left(x(0)), Right('a'))
+      )),
+
+      (q2, 'a') ->  (base ++ Map(
+        x(2) -> List(Left(x(2)), Right('a'))
+      )),
+
+      (q2, 'b') -> (base ++ Map(
+        x(2) -> List(Left(x(3)))
+      ))
+    )
+
+    val f = Map(q2 -> List(Left(x(2)), Left(x(6))))
+    SST(Set(q0, q1, q2), q0, x.toSet, delta, eta, f)
+  }
 }
