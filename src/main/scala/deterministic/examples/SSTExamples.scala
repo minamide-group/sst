@@ -43,6 +43,33 @@ object SSTExamples {
     SST(Set(q0, q1, q_sink), q0, Set(x0, x1), delta, eta, f)
   }
 
+  def getReverseSST1() = {
+    val q0 = SST_State(0, "r")
+    val q_sink = SST_State(-1, "r")
+
+    val x0 = SST_Var(0, "r")
+    val x1 = SST_Var(1, "r")
+
+    val delta = Map(
+      (q0, 'a') -> q0,
+      (q0, 'b') -> q0
+    ).withDefaultValue(q_sink)
+
+    val eta = Map(
+      (q0, 'a') -> Map(
+        x0 -> List(Left(x0), Right('a')),
+        x1 -> List(Right('a'), Left(x1))
+      ),
+      (q0, 'b') -> Map(
+        x0 -> List(Left(x0), Right('b')),
+        x1 -> List(Right('b'), Left(x1))
+      )
+    ).withDefaultValue(Map())
+
+    val f = Map(q0 -> List(Left(x0), Right('#'), Left(x1))).withDefaultValue(List())
+    SST(Set(q0, q_sink), q0, Set(x0, x1), delta, eta, f)
+  }
+
   def getHalfSST() = {
     val q0 = SST_State(0, "h")
     val q1 = SST_State(1, "h")
@@ -168,5 +195,29 @@ object SSTExamples {
 
     val f = Map(q2 -> List(Left(x(2)), Left(x(6))))
     SST(Set(q0, q1, q2), q0, x.toSet, delta, eta, f)
+  }
+
+  def threeOrFive() = {
+    val q0 = SST_State(0, "r")
+    val q_sink = SST_State(-1, "r")
+
+    val x0 = SST_Var(0, "r")
+
+    val delta = Map(
+      (q0, 'a') -> q0,
+      (q0, 'b') -> q0
+    ).withDefaultValue(q_sink)
+
+    val eta = Map(
+      (q0, 'a') -> Map(
+        x0 -> List(Left(x0), Right('a'), Right('a'), Right('b'))
+      ),
+      (q0, 'b') -> Map(
+        x0 -> List(Left(x0), Right('b'), Right('b'), Right('b'), Right('a'), Right('a'))
+      )
+    ).withDefaultValue(Map())
+
+    val f = Map(q0 -> List(Right('a'), Left(x0))).withDefaultValue(List())
+    SST(Set(q0, q_sink), q0, Set(x0), delta, eta, f)
   }
 }

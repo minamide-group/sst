@@ -133,6 +133,7 @@ object Checker {
     if (log) {
       val timeCost = System.currentTimeMillis() - startTime
       println("Parikh image linear sets: " + res.size)
+      res.foreach(println)
       println("time cost: " + timeCost.toDouble / 1000 + "s")
       println()
     }
@@ -185,13 +186,11 @@ object Checker {
       "(= " + expected + " " + value + ")"
     }
 
-    val strVars: Set[Int] = cons.split(" ").toSet.filter(_.startsWith("len")).map(s =>
-      if (s.endsWith(")")) s.substring(3, s.length - 1).toInt
-      else s.substring(3).toInt)
+    val strVars: Set[Int] = cons.replaceAll("\t", " ").split(" ").toSet.filter(_.startsWith("len")).map(
+      s => s.filterNot(_ == ')').substring(3).toInt)
 
-    val intVars: Set[Int] = cons.split(" ").toSet.filter(_.startsWith("x")).map(s =>
-      if (s.endsWith(")")) s.substring(1, s.length - 1).toInt
-      else s.substring(1).toInt)
+    val intVars: Set[Int] = cons.replaceAll("\t", " ").split(" ").toSet.filter(_.startsWith("x")).map(
+      s => s.filterNot(_ == ')').substring(1).toInt)
 
     val list: List[(Map[Int, Int], List[Map[Int, Int]])] = sls.toList.map(r => (r._1, r._2.toList))
 
