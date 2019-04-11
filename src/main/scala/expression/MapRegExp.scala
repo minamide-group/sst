@@ -8,6 +8,7 @@ object MapRegExp extends AbstractRegExp[Set[(Map[Int, Int], Set[Map[Int, Int]])]
   override def eval(r : RegExp): RegExp = {
     r match {
       case EmptyExp => EmptyExp
+      case EpsExp => CharExp(Set[(Map[Int, Int], Set[Map[Int, Int]])]((Map().withDefaultValue(0), Set.empty)))
       case c: CharExp1 => c
       case c: ConcatExp => {
         (eval(c.r1), eval(c.r2)) match {
@@ -27,7 +28,7 @@ object MapRegExp extends AbstractRegExp[Set[(Map[Int, Int], Set[Map[Int, Int]])]
       }
       case c: StarExp => {
         eval(c.r) match {
-          case EmptyExp => getEpsExp
+          case EmptyExp => eval(EpsExp)
           case m: CharExp1 => {
             def _star(list: List[(Map[Int, Int], Set[Map[Int, Int]])], set: Set[(Map[Int, Int], Set[Map[Int, Int]])]): Set[(Map[Int, Int], Set[Map[Int, Int]])] = {
               list match {
@@ -52,5 +53,4 @@ object MapRegExp extends AbstractRegExp[Set[(Map[Int, Int], Set[Map[Int, Int]])]
 
   override def h(a: Map[Int, Int]): Set[(Map[Int, Int], Set[Map[Int, Int]])] = Set((a, Set.empty))
 
-  override def getEpsExp: RegExp = CharExp(Set[(Map[Int, Int], Set[Map[Int, Int]])]((Map().withDefaultValue(0), Set.empty)))
 }

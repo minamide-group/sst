@@ -8,8 +8,6 @@ trait AbstractRegExp[T, Γ] {
 
   def h(a: Γ): T
 
-  def getEpsExp: RegExp
-
   def toRegExp[Q, Σ](transducer: nondeterministic.Transducer[Q, Σ, Γ]): RegExp = {
     val (states, initialStates, finialStates, delta) = (transducer.states, transducer.s0, transducer.f, transducer.δ)
 
@@ -18,8 +16,10 @@ trait AbstractRegExp[T, Γ] {
         val rules = eliminate(states.filterNot(x => x == q0).filterNot(x => x == qf).toList,
           delta.map(x => (x._1, CharExp(h(x._4)): RegExp, x._3)))
 
-        if (q0 == qf)
-          rules.filter(x => x._1 == q0).filter(x => x._3 == q0).map(x => x._2).foldLeft(getEpsExp: RegExp) { (x, y) => AltExp(x, y) }
+        if (q0 == qf) {
+          val A = getCombined(q0, q0, rules)
+          StarExp(A)
+        }
         else {
           val A = getCombined(q0, q0, rules)
           val B = getCombined(q0, qf, rules)

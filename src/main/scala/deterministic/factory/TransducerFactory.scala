@@ -66,6 +66,31 @@ case class TransducerFactory(charSet: Set[Char]) {
     Transducer(states.toSet, states(0), delta, eta, states.toSet)
   }
 
+  def at(idx : Int) : Transducer[TransState, Char, List[Char]] = {
+
+    implicit def monoid = strMonoid
+
+    val states = List.range(0, idx+2).map(i=> TransState(i))
+
+    val delta = List.range(0, idx+1).flatMap(i=>
+      charSet.map(c=>
+        (states(i), c)-> (states(i+1))
+      )
+    ).toMap ++ charSet.map(c=>
+      (states(idx+1), c)-> (states(idx+1))
+    ).toMap
+
+    val eta = List.range(0, idx+2).flatMap(i=>
+      charSet.map(c=>
+        (states(i), c)->List()
+      )
+    ).toMap ++ charSet.map(c=>
+      (states(idx), c)->List(c)
+    )
+
+    Transducer(states.toSet, states(0), delta, eta, states.toSet)
+  }
+
   def subString(begin: Int): Transducer[TransState, Char, List[Char]] = {
 
     implicit def monoid = strMonoid

@@ -189,10 +189,12 @@ object Checker {
     val strVars: Set[Int] = cons.replaceAll("\t", " ").split(" ").toSet.filter(_.startsWith("len")).map(
       s => s.filterNot(_ == ')').substring(3).toInt)
 
+    val m0 : Map[Int, Int] = strVars.map(i=>i->0).toMap // default map
+
     val intVars: Set[Int] = cons.replaceAll("\t", " ").split(" ").toSet.filter(_.startsWith("x")).map(
       s => s.filterNot(_ == ')').substring(1).toInt)
 
-    val list: List[(Map[Int, Int], List[Map[Int, Int]])] = sls.toList.map(r => (r._1, r._2.toList))
+    val list: List[(Map[Int, Int], List[Map[Int, Int]])] = sls.toList.map(r => ( m0 ++ r._1, r._2.toList.map(t=> m0 ++ t) ))
 
     val declare_0 = strVars.map(i => "(declare-const " + getStrName(i) + " Int)").mkString("\n")
 

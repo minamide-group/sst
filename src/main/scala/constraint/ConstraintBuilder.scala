@@ -62,6 +62,10 @@ case class ConstraintBuilder(chars: String, rl: List[String], rg: List[String], 
         val tran = tf.after(t(2).charAt(0))
         TransducerConstraint(StringVariable(t(0).toInt), tran, StringVariable(t(3).toInt))
       }
+      case "at"=>{
+        val tran = tf.at(t(2).toInt)
+        TransducerConstraint(StringVariable(t(0).toInt), tran, StringVariable(t(3).toInt))
+      }
       case _ => toRelCons_concat(t)
     }
   }
@@ -74,7 +78,12 @@ case class ConstraintBuilder(chars: String, rl: List[String], rg: List[String], 
   def toConstraints: (String, List[RelCons], Set[RegCons[Char]], Set[Char]) = {
     (ic,
       rl.map(s => toRelCons(s)),
-      rg.map(s => toRegCons(s)).toSet,
+      rg.map(s => toRegCons(s)).groupBy(_.x).map(t=>{
+        val head = t._2.head
+        val rest = t._2.drop(1)
+        val dfa = rest.foldLeft(head.R){(x,y) => x.intersect(y.R).rename}
+        RegCons(t._1, dfa.minimize.rename)
+      }).toSet,
       charSet)
   }
 
