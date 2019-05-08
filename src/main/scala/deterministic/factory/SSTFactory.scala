@@ -108,6 +108,41 @@ case class SSTFactory(charSet: Set[Char]) {
     SST(Set(s0), s0, Set(v0), delta, eta, f)
   }
 
+  def insert(idx: Int, string: String) : SST[SST_State, Char, Char, SST_Var] ={
+
+    val sstName = "insert"
+    val states = List.range(0, idx+1).map(i => SST_State(i, sstName))
+    val s0 = states(0)
+    val vars = List.range(0, 2).map(i=> SST_Var(i, sstName))
+    val f = Map(
+      states(idx)-> (List(Left(vars(0))):::string.toList.map(Right(_)):::List(Left(vars(1))))
+    )
+
+    val delta = List.range(0, idx).flatMap(i=>
+      charSet.map(c=>
+        (states(i), c)-> (states(i+1))
+      )
+    ).toMap ++ charSet.map(c=>
+      (states(idx), c)-> (states(idx))
+    ).toMap
+
+    val eta = List.range(0, idx).flatMap(i=>
+      charSet.map(c=>
+        (states(i), c)-> Map(
+          vars(0)->List(Left(vars(0)), Right(c)),
+          vars(1)->List()
+        )
+      )
+    ).toMap ++ charSet.map(c=>
+      (states(idx), c)-> Map(
+        vars(0)->List(Left(vars(0))),
+        vars(1)->List(Left(vars(1)), Right(c))
+      )
+    ).toMap
+
+    SST(states.toSet, s0, vars.toSet, delta, eta, f)
+  }
+
   def getNext(str: String): List[Int] = {
     if (str == null || str.length == 0) List()
     else if (str.length == 1) List(-1)

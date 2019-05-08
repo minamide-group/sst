@@ -1,6 +1,9 @@
 package deterministic.factory
 
+import constraint.vars.FAState
+import deterministic.DFA
 import expression.regex._
+import formula.re._
 import nondeterministic.NFA
 
 case class DFAFactory(charSet : Set[Char]) {
@@ -17,6 +20,15 @@ case class DFAFactory(charSet : Set[Char]) {
     val q0 = new S
     val q1 = new S
     NFA(Set(q0, q1), q0, Map((q0, Ch(c)) -> Set(q1)), Set(q1))
+  }
+
+  private def unitNFA(str : String) : NFA[S, C] = {
+    if(str.length==0)
+      epsilonNFA()
+    else if(str.length == 1)
+      unitNFA(str.charAt(0))
+    else
+      conNFA(unitNFA(str.charAt(0)), unitNFA(str.substring(1)))
   }
 
   private def emptyNFA(): NFA[S, C] = {
@@ -73,6 +85,8 @@ case class DFAFactory(charSet : Set[Char]) {
 
   def getDFA(regex: String) = removeEps(RegToNFA(parseReg(regex.filterNot(_.isWhitespace)))).toDFA.trim.minimize.rename
 
+  def getDFA(formula : ReturnRe)  = removeEps(RegToNFA(formula)).toDFA.trim.minimize.rename
+
   def parseReg(str: String): RegExp = {
     //assert valid
 
@@ -119,6 +133,15 @@ case class DFAFactory(charSet : Set[Char]) {
     f(parseDot(str), 0, Set())._1
   }
 
+  def RegToNFA(formula: ReturnRe) : NFA[S, C] = {
+    formula match {
+      case a : StrToRe => unitNFA(a.str)
+      case a : ReUnion => altNFA(RegToNFA(a.re1), RegToNFA(a.re2))
+      case a : ReConcat=> conNFA(RegToNFA(a.re1), RegToNFA(a.re2))
+      case a : ReStar  => starNFA(RegToNFA(a.re))
+    }
+  }
+
   def RegToNFA(regex: RegExp): NFA[S, C] = {
     regex match {
       case ce: CharExp[Char] => unitNFA(ce.c)
@@ -159,4 +182,13 @@ case class DFAFactory(charSet : Set[Char]) {
     NFA(nfa.states, nfa.s0, delta, newF)
   }
 
+  def getComplement(dfa : DFA[FAState, Char]) : DFA[FAState, Char]= {
+    val state = FAState(-1)
+    val newStates = dfa.states + state
+    val newF = newStates -- dfa.f
+    val newDelta = newStates.flatMap(s=>{
+      charSet.map(c=> (s,c)->state)
+    }).toMap ++ dfa.δ
+    DFA(newStates, dfa.s0, newDelta, newF).minimize.rename
+  }
 }

@@ -1,8 +1,6 @@
 import java.io.File
 
-import constraint._
-
-import scala.io.Source
+import builder.Checker
 
 //java -jar checker.jar path
 object Main extends App {
@@ -29,19 +27,19 @@ object Main extends App {
   }
 
   def processFile(file: File): Unit = {
-    if (!file.canRead)
-      println("file can not be read : " + file.getName)
-    else {
-      val markSet = Set("chars:", "intCons:", "relCons:", "regCons:")
-      val lines = Source.fromFile(file.getPath).getLines().filterNot(s => s.isEmpty || s.startsWith("//") || s.toList.foldLeft(true) { (x, y) => x && y.isWhitespace }).toList
-      val marks = lines.zipWithIndex.filter(t => markSet(t._1.filterNot(_.isWhitespace))).map(t => (t._1.filterNot(_.isWhitespace), t._2))
+    val (res, msg) = Checker(file).output
 
-      val chars = lines.slice(marks(0)._2 + 1, marks(1)._2).mkString
-      val ic = lines.slice(marks(1)._2 + 1, marks(2)._2).mkString
-      val rl = lines.slice(marks(2)._2 + 1, marks(3)._2)
-      val rg = lines.slice(marks(3)._2 + 1, lines.length)
-
-      Checker.process(chars, rl, rg, ic, '#', true)
-    }
+    if(res.isEmpty)
+      println("undefine")
+    else if(res.get)
+      println("sat")
+    else
+      println("unsat")
+    msg.foreach(t=> {
+      println("-------------------------------")
+      println(t._1+":")
+      println(t._2)
+      println()
+    })
   }
 }

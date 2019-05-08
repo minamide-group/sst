@@ -248,9 +248,7 @@ case class SST[Q, Σ, Γ, X](
 
   }
 
-  def toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = _toParikhImage
-
-  private def _toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = {
+  def toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = {
     val alphabets: Set[Γ] = η.toList.flatMap(x => x._2.toList).flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet ++
       f.flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet
     val aToI: Map[Γ, Int] = (alphabets.toList.indices zip alphabets).toMap.map(x => x._2 -> x._1)

@@ -110,4 +110,5 @@ case class DFA[Q, Σ](
 
     DFA(states, init, rules, accept)
   }
+
 }
