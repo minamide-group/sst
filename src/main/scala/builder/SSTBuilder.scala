@@ -10,7 +10,8 @@ import deterministic.{DFA, Transducer}
 case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
                          regCons: Set[RegCons[Σ]],
                          chars: Set[Σ],
-                         split: Σ) {
+                         split: Σ,
+                         varNum : Int) {
 
   type MySST[X] = SST[SST_State, Σ, X, SST_Var]
   type Out[X] = Either[SST_Var, X]
@@ -127,7 +128,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
           }
         }
         case Nil if varDFA.isEmpty => Some(res)
-        case Nil => Some(res ::: List(getLast(list.last.getLeftIdx + 1, varDFA)))
+        case Nil => Some(res ::: List(getLast(varNum, varDFA)))
       }
     }
 
@@ -196,7 +197,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     val v = SST_Var(q.id, q.name)
     val toNewStates = replacement.states.map(x => x -> SST_State(q.id, tName(x))).toMap
     val newStates = sst.states - q ++ replacement.states.map(toNewStates(_))
-    val newS0 = if (sst.s0 == q) toNewStates(replacement.s0) else sst.s0
+    val newS0 = if (sst.s0 == q) toNewStates.withDefaultValue(SST_State(0, "t0"))(replacement.s0) else sst.s0
 
     val newDelta = sst.δ.filterNot(r => r._1._1 == q || r._2 == q) ++
       replacement.δ.map(r => (toNewStates(r._1._1), r._1._2) -> toNewStates(r._2)) ++
@@ -209,7 +210,8 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
       replacement.δ.map(r => (toNewStates(r._1._1), r._1._2) -> (unit + (v -> listC(v, r._1._2)))) ++
       replacement.f.map(qf => (toNewStates(qf), split) -> unit)
 
-    SST(newStates, newS0, sst.vars, newDelta, newEta, sst.f)
+    val res = SST(newStates, newS0, sst.vars, newDelta, newEta, sst.f).trim
+    res
   }
 
   private def replace(sst: MySST[Σ], q: SST_State, replacement: MySST[Σ]): MySST[Σ] = {
@@ -314,7 +316,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
 
   private def getLast(num: Int, varDFA: Map[Int, DFA[FAState, Σ]]): MySST[Σ] = {
     val sstName = "sst" + num
-    addDefault(replaceAllDFA(getStem(num, sstName), varDFA.toList, sstName))
+    addDefault(replaceAllDFA(getStem(num, sstName), varDFA.toList, sstName)).trim
   }
 
   private def addDefault[X](sst: MySST[X]): MySST[X] = {

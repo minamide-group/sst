@@ -30,7 +30,7 @@ object Main extends App {
     val (res, msg) = Checker(file).output
 
     if(res.isEmpty)
-      println("undefine")
+      println("unsat")
     else if(res.get)
       println("sat")
     else

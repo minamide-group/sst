@@ -24,8 +24,8 @@ case class SLConsBuilder(formula: Formula) {
             loop(res, xs, msg)
           else {
             val we = x.collect { case a: WordEquation => a }.toList
-            val strVs = we.flatMap(e => e.strVs).toSet
             val sr = x.collect { case a: StrInRe => a }
+            val strVs = we.flatMap(e => e.strVs).toSet ++ sr.flatMap(e=>e.strVs)
             val ie = x.collect { case a: IntegerEquation => a }
             val charSet = x.flatMap(a => a.chars)
             val chars = if (charSet.isEmpty) Set('a') else charSet
@@ -66,7 +66,7 @@ case class SLConsBuilder(formula: Formula) {
   }
 
   //check whether a conjunctive clause is in SL
-  case class SingleSL(we: List[WordEquation], sr: Set[StrInRe], ie: Set[IntegerEquation], weStrVs: Set[StrV], chars: Set[Char],
+  case class SingleSL(we: List[WordEquation], sr: Set[StrInRe], ie: Set[IntegerEquation], strVs: Set[StrV], chars: Set[Char],
                       msg : List[(String, String)]) {
     val tf = TransducerFactory(chars)
     val df = DFAFactory(chars)
@@ -76,7 +76,7 @@ case class SLConsBuilder(formula: Formula) {
       val strVListOption = checkSL(we)
       val strVList = if (strVListOption.isEmpty)  List() else strVListOption.get
 
-      if(strVList.isEmpty && weStrVs.nonEmpty) {
+      if(strVList.isEmpty && strVs.nonEmpty) {
         val name = "clause invalid"
         val value = "not in SL"
         return (None, msg:::List((name,value)))
@@ -84,26 +84,9 @@ case class SLConsBuilder(formula: Formula) {
 
       val map = strVList.zipWithIndex.toMap
 
-      val freeRe = sr.filterNot(p=> weStrVs(p.left))
-      if(freeRe.nonEmpty){ // only check the free variable
-        val freeMap : Map[StrV, Int] = freeRe.map(re => re.left).toList.zipWithIndex.toMap
-        val DFAsNonEmpty = regularConstraints(freeRe, freeMap).map(t=>t.R.states.nonEmpty).reduce(_&&_)
-        if(!DFAsNonEmpty) {
-          val name = "clause invalid"
-          val value = "free regular constraints unsat"
-          return (None, msg:::List((name,value)))
-        }
-      }
-
-      val msg0 = if(freeRe.nonEmpty){
-        val name = "free regular constraints sat and removed"
-        val value = freeRe.toString
-        List((name,value))
-      }else List()
-
       (Some((atomicConstraints(we, map),
-        regularConstraints(sr.filter(p => weStrVs(p.left)), map),
-        chars, ie, map)), msg:::msg0)
+        regularConstraints(sr.filter(p => strVs(p.left)), map),
+        chars, ie, map)), msg)
     }
 
     def checkSL(equations: List[WordEquation]): Option[List[StrV]] = {
@@ -141,7 +124,7 @@ case class SLConsBuilder(formula: Formula) {
     //None : not AC
     def checkAC(out: Map[StrV, Set[StrV]], in: Map[StrV, Int]): Option[List[StrV]] = {
       def bfs(res: List[StrV], pos: Int, inDegree: Map[StrV, Int]): Option[List[StrV]] = {
-        if (res.size == weStrVs.size) {
+        if (res.size == strVs.size) {
           Some(res)
         }
         else if (pos < res.size) {
@@ -153,7 +136,7 @@ case class SLConsBuilder(formula: Formula) {
           None
       }
 
-      bfs(weStrVs.filter(x => in.withDefaultValue(0)(x) == 0).toList, 0, in)
+      bfs(strVs.filter(x => in.withDefaultValue(0)(x) == 0).toList, 0, in)
     }
 
     def atomicConstraints(equations: List[WordEquation], map: Map[StrV, Int]): List[AtomicSLCons] = {

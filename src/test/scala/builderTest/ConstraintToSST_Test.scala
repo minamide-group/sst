@@ -20,7 +20,7 @@ class ConstraintToSST_Test extends FlatSpec{
     val (consList, msg) = SLConsBuilder(formula).output
 
     val cons = consList(0)
-    val sst = SSTBuilder(cons._1, cons._2, cons._3, '#').output
+    val sst = SSTBuilder(cons._1, cons._2, cons._3, '#', 5).output
 
     sst._1.get.foreach(i=>i.print)
     sst._2.get.print

@@ -21,7 +21,7 @@ class SSTtoParikh_Test extends FlatSpec{
 
     val cons = consList(0)
 
-    val sstRes = SSTBuilder(cons._1, cons._2, cons._3, '#').output
+    val sstRes = SSTBuilder(cons._1, cons._2, cons._3, '#', 5).output
 
     val sstList = sstRes._1.get
     val sst = sstRes._2.get

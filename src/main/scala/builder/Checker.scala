@@ -70,7 +70,7 @@ case class Checker(file : File) {
             return checkLoop(xs, newMsg)
         }
 
-        val sstOption = SSTBuilder(we, sr, chars, 0.toChar).output
+        val sstOption = SSTBuilder(we, sr, chars, 0.toChar, map.size).output
 
         val message = (msg ::: List( ("chars", chars.toString))) :::sstOption._3
         if(sstOption._2.isEmpty || sstOption._2.get.states.isEmpty){
@@ -91,7 +91,7 @@ case class Checker(file : File) {
         //sstList.foreach(i=>i.printDetail)
         val parikh = ParikhBuilder(sst, sstList, we).output
         val z3Input = Z3InputBuilder(ie.toList, parikh, map).output
-
+        //val msg_Z3 = message:::List(("Z3 input", z3Input))
         val (z3sat, newMsg) = excuteZ3(z3Input, message)
         if(z3sat)
           return (Some(true), newMsg)
