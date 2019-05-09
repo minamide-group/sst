@@ -19,13 +19,16 @@ case class Checker(file : File) {
     val t1 = System.currentTimeMillis()
 
     val formula = FormulaBuilder(lines).output
+    if(formula==null){
+      return (Some(true), List(("No constraint","")))
+    }
 
     val t2 = System.currentTimeMillis()
 
-    val clauses = SLConsBuilder(formula).output
+    val (clauses, msg_SL) = SLConsBuilder(formula).output
     val t3 = System.currentTimeMillis()
 
-    val message = List(
+    val message = msg_SL:::List(
       ("Build formula time",  getTimeSecond(t1,t2)),
       ("Build sl time", getTimeSecond(t2,t3))
     )
@@ -40,8 +43,7 @@ case class Checker(file : File) {
       val name = "Clause number"
       val value = clauses.size.toString
       val (res, msg) = checkLoop(clauses, message:::List((name, value)))
-      val t4 = System.currentTimeMillis()
-      (res, msg ::: List(("Total time",getTimeSecond(t3,t4))))
+      (res, msg)
     }
   }
 
@@ -52,7 +54,22 @@ case class Checker(file : File) {
       case x :: xs =>{
 
         val (we, sr, chars, ie, map) = x
-        //println(chars)
+
+        if(we.size ==0 && sr.size==0 && ie.size==0) {
+          val message = msg ::: List(("Empty clause",""))
+          return (Some(true), message)
+        }
+
+        if(we.size ==0 && sr.size==0){
+          val z3Input = Z3InputBuilder(ie.toList, Set(), map).output
+          val message = msg ::: List(("Only contains integer constraints",""))
+          val (z3sat, newMsg) = excuteZ3(z3Input, message)
+          if(z3sat)
+            return (Some(true), newMsg)
+          else
+            return checkLoop(xs, newMsg)
+        }
+
         val sstOption = SSTBuilder(we, sr, chars, 0.toChar).output
 
         val message = (msg ::: List( ("chars", chars.toString))) :::sstOption._3
@@ -104,8 +121,8 @@ case class Checker(file : File) {
 
     val sat = output.substring(0, 3) == "sat"
     if(sat)
-      (true, msg ::: List(("Satisfiable","clause sat, with integer constraints"), ("Z3 check time", getTimeSecond(t1,t2))) )
+      (true, msg ::: List(("Satisfiable","Z3 sat"), ("Z3 check time", getTimeSecond(t1,t2))) )
     else
-      (false, msg ::: List(("Unsatisfiable", "clause unsat, integer constraints unsat"), ("Z3 check time", getTimeSecond(t1,t2))) )
+      (false, msg ::: List(("Unsatisfiable", "Z3 unsat"), ("Z3 check time", getTimeSecond(t1,t2))) )
   }
 }

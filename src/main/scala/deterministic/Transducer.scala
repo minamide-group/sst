@@ -47,7 +47,7 @@ case class Transducer[Q, Σ, Γ](
     val toNewStates = states.toList.zipWithIndex.map(t => t._1 -> TransState(t._2)).toMap
     Transducer(
       states.map(s => toNewStates(s)),
-      toNewStates(s0),
+      toNewStates.withDefaultValue(TransState(0))(s0),
       δ.map(t => (toNewStates(t._1._1), t._1._2) -> toNewStates(t._2)),
       η.map(t => (toNewStates(t._1._1), t._1._2) -> t._2),
       f.map(s => toNewStates(s))

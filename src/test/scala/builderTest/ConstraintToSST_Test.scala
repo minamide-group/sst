@@ -17,8 +17,9 @@ class ConstraintToSST_Test extends FlatSpec{
     val c4 = StrInRe(StrV("u"), StrToRe("aad"), false)
     val formula = Conjunction(Conjunction(c1, c2), Conjunction(c3, c4))
 
-    val cons = SLConsBuilder(formula).output(0)
+    val (consList, msg) = SLConsBuilder(formula).output
 
+    val cons = consList(0)
     val sst = SSTBuilder(cons._1, cons._2, cons._3, '#').output
 
     sst._1.get.foreach(i=>i.print)

@@ -1,0 +1,45 @@
+unsat
+-------------------------------
+Build formula time:
+0.256
+
+-------------------------------
+Build sl time:
+0.251
+
+-------------------------------
+Clause number:
+1
+
+-------------------------------
+chars:
+Set(a)
+
+-------------------------------
+SSTs transformed time:
+0.069
+
+-------------------------------
+SST composed time:
+0.009
+
+-------------------------------
+sst:
+7 states, 2 variables, 6 transitions
+
+-------------------------------
+composed sst:
+7 states, 2 variables, 6 transitions
+
+-------------------------------
+Unsatisfiable:
+clause unsat, integer constraints unsat
+
+-------------------------------
+Z3 check time:
+0.233
+
+-------------------------------
+Total time:
+0.785
+

@@ -137,7 +137,8 @@ case class FormulaBuilder(lines : List[String]) {
 
   def parseInt(tokens : List[String], strV : Set[String], intV : Set[String]): (List[String], ReturnInteger) ={
     //1
-    if(tokens(0) forall Character.isDigit) {
+    if( (tokens(0).charAt(0) == '-' || tokens(0).charAt(0)=='+' || tokens(0).charAt(0).isDigit)
+      && (tokens(0).drop(1) forall Character.isDigit) ) {
       (tokens.drop(1), IntC(tokens(0).toInt))
     }
     //a

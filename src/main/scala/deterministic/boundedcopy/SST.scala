@@ -184,7 +184,7 @@ case class SST[Q, Σ, Γ, X](
 
     val newStates: Set[SST_State] = states.map(s => toNewState(s))
 
-    val newS0: SST_State = toNewState(s0)
+    val newS0: SST_State = toNewState.withDefaultValue(SST_State(0, sstName))(s0)
 
     val newVars: Set[SST_Var] = vars.map(x => toNewVar(x))
 

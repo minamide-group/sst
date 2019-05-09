@@ -18,7 +18,9 @@ class ParikhToZ3_Test extends FlatSpec{
     val c5 = IntegerEquation(StrLen(StrV("x")), Operation(StrLen(StrV("w")), StrLen(StrV("z")), "+"), 3)
     val formula = Conjunction(c5, Conjunction(Conjunction(c1, c2), Conjunction(c3, c4)))
 
-    val cons = SLConsBuilder(formula).output(0)
+    val (consList, msg) = SLConsBuilder(formula).output
+
+    val cons = consList(0)
 
     val sstRes = SSTBuilder(cons._1, cons._2, cons._3, '#').output
 

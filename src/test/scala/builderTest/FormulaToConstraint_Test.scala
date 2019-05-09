@@ -17,6 +17,6 @@ class FormulaToConstraint_Test extends FlatSpec{
     val c4 = StrInRe(StrV("u"), StrToRe("aad"), false)
     val formula = Disjunction(Conjunction(c1, c2), Negation(Conjunction(Negation(c3), c4)))
 
-    SLConsBuilder(formula).output.foreach(println)
+    SLConsBuilder(formula).output
   }
 }

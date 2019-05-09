@@ -20,20 +20,26 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
       (None, None, List(("SST build failed", "alphabet contains split")))
     else {
       val t1 = System.currentTimeMillis()
-      val sstList = constraintsToSSTs(atomicSLCons, regCons)
+      val sstListOption = constraintsToSSTs(atomicSLCons, regCons)
       val t2 = System.currentTimeMillis()
-      val sst = composeSSTs(sstList)
-      val t3 = System.currentTimeMillis()
+      val msg0 = List(("SSTs transformed time", getTimeSecond(t1,t2)))
+      if(sstListOption.isEmpty){
+        val msg1 = msg0 ::: List(("SSTs transformed failed","Contains empty SSTs"))
+        (sstListOption, None,  msg1)
+      }
+      else{
+        val sstList = sstListOption.get
+        val sst = composeSSTs(sstList)
+        val t3 = System.currentTimeMillis()
 
-      val msg = List(("SSTs transformed time", getTimeSecond(t1,t2)), ("SST composed time", getTimeSecond(t2,t3))) :::
-        sstList.map(s=> ("sst", s.states.size+" states, " + s.vars.size + " variables, " + s.δ.size + " transitions")) :::
-        (if(sst.isEmpty) List()
-        else {
-          val s = sst.get
-          List(("composed sst", s.states.size+" states, " + s.vars.size + " variables, " + s.δ.size + " transitions"))
-        })
+        val msg2 = msg0 ::: List(("SST composed time", getTimeSecond(t2,t3)))
+        val msg3 = sstList.map(s=> ("sst", s.states.size+" states, " + s.vars.size + " variables, " + s.δ.size + " transitions"))
+        val msg4 = (if(sst.isEmpty) List() else {val s = sst.get
+            List(("composed sst", s.states.size+" states, " + s.vars.size + " variables, " + s.δ.size + " transitions"))
+          })
 
-      (Some(sstList), sst,  msg)
+        (sstListOption, sst,  msg2:::msg3:::msg4)
+      }
     }
   }
 
@@ -92,8 +98,8 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     sst3
   }
 
-  def constraintsToSSTs(list: List[AtomicSLCons], set: Set[RegCons[Σ]]): List[MySST[Σ]] = {
-    def star(relCons: List[AtomicSLCons], varDFA: Map[Int, DFA[FAState, Σ]], res: List[MySST[Σ]]): List[MySST[Σ]] = {
+  def constraintsToSSTs(list: List[AtomicSLCons], set: Set[RegCons[Σ]]): Option[List[MySST[Σ]]] = {
+    def star(relCons: List[AtomicSLCons], varDFA: Map[Int, DFA[FAState, Σ]], res: List[MySST[Σ]]): Option[List[MySST[Σ]]] = {
       relCons match {
         case x :: rest => {
           val leftId = x.getLeftIdx
@@ -104,22 +110,24 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
             }
             case t: TransducerConstraint[Σ] => {
               val regCons = varDFA.filter(p => p._1 < leftId && p._1 != t.source)
-              val y = if (varDFA.contains(t.source))
-                TransducerConstraint(t.left, addDefault(t.fst).intersect(addDefault(varDFA(t.source))).trim.rename, t.source)
-              else x
-              star(rest, varDFA.filterNot(p => p._1 < leftId), res ::: List(getOne(y, regCons)))
+              val fst = if (varDFA.contains(t.source)) addDefault(t.fst).intersect(addDefault(varDFA(t.source))).trim.rename else t.fst
+              if(fst.states.isEmpty)
+                None
+              else
+                star(rest, varDFA.filterNot(p => p._1 < leftId), res ::: List(getOne(TransducerConstraint(t.left, fst, t.source), regCons)))
             }
             case s: SSTConstraint[Σ] => {
               val regCons = varDFA.filter(p => p._1 < leftId && p._1 != s.source)
-              val y = if (varDFA.contains(s.source))
-                SSTConstraint(s.left, compose(addDefault(dfaToSST(varDFA(s.source))), addDefault(s.sst)), s.source)
-              else x
-              star(rest, varDFA.filterNot(p => p._1 < leftId), res ::: List(getOne(y, regCons)))
+              val sst = if (varDFA.contains(s.source)) compose(addDefault(dfaToSST(varDFA(s.source))), addDefault(s.sst)) else s.sst
+              if(sst.states.isEmpty)
+                None
+              else
+                star(rest, varDFA.filterNot(p => p._1 < leftId), res ::: List(getOne(SSTConstraint(s.left, sst, s.source), regCons)))
             }
           }
         }
-        case Nil if varDFA.isEmpty => res
-        case Nil => res ::: List(getLast(list.last.getLeftIdx + 1, varDFA))
+        case Nil if varDFA.isEmpty => Some(res)
+        case Nil => Some(res ::: List(getLast(list.last.getLeftIdx + 1, varDFA)))
       }
     }
 
@@ -127,9 +135,11 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     star(list, varDFA, List())
   }
 
-  def composeSSTs(ssts: List[MySST[Σ]]): Option[MySST[Int]] = {
-    val list = ssts.dropRight(1)
-    val last = renameToInt(ssts.last)
+  def composeSSTs(sstList: List[MySST[Σ]]): Option[MySST[Int]] = {
+    if(sstList.size==0)
+      return None
+    val list = sstList.dropRight(1)
+    val last = renameToInt(sstList.last)
     if (list.isEmpty)
       Some(last)
     else if (list.size == 1) {

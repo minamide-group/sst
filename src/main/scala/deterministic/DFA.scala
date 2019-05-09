@@ -56,7 +56,7 @@ case class DFA[Q, Σ](
 
     DFA(
       states.map(q => toNewStates(q)),
-      toNewStates(s0),
+      toNewStates.withDefaultValue(FAState(0))(s0),
       δ.map(r => (toNewStates(r._1._1), r._1._2) -> toNewStates(r._2)),
       f.map(q => toNewStates(q))
     )

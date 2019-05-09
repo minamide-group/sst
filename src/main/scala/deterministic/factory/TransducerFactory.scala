@@ -40,8 +40,10 @@ case class TransducerFactory(charSet: Set[Char]) {
 
     implicit def monoid = strMonoid
 
-    if (begin >= end || begin < 0)
-      empty()
+    if (begin > end || begin < 0)
+      return empty()
+    if(begin == end)
+      return epsilon()
 
     val states = List.range(0, end + 1).map(i => TransState(i))
 
@@ -53,10 +55,12 @@ case class TransducerFactory(charSet: Set[Char]) {
       charSet.map(c => (states(i), c) -> (if (i < begin || i == end) List() else List(c)))
     ).toMap
 
-    Transducer(states.toSet, states(0), delta, eta, Set(states(end)))
+    val f = Set(states(end))
+
+    Transducer(states.toSet, states(0), delta, eta, f)
   }
 
-  def empty(): Transducer[TransState, Char, List[Char]] = {
+  def epsilon(): Transducer[TransState, Char, List[Char]] = {
 
     implicit def monoid = strMonoid
 
@@ -66,29 +70,9 @@ case class TransducerFactory(charSet: Set[Char]) {
     Transducer(states.toSet, states(0), delta, eta, states.toSet)
   }
 
-  def at(idx : Int) : Transducer[TransState, Char, List[Char]] = {
-      subString(idx, idx+1)
-//    implicit def monoid = strMonoid
-//
-//    val states = List.range(0, idx+2).map(i=> TransState(i))
-//
-//    val delta = List.range(0, idx+1).flatMap(i=>
-//      charSet.map(c=>
-//        (states(i), c)-> (states(i+1))
-//      )
-//    ).toMap ++ charSet.map(c=>
-//      (states(idx+1), c)-> (states(idx+1))
-//    ).toMap
-//
-//    val eta = List.range(0, idx+2).flatMap(i=>
-//      charSet.map(c=>
-//        (states(i), c)->List()
-//      )
-//    ).toMap ++ charSet.map(c=>
-//      (states(idx), c)->List(c)
-//    )
-//
-//    Transducer(states.toSet, states(0), delta, eta, states.toSet)
+  def empty(): Transducer[TransState, Char, List[Char]] ={
+    implicit def monoid = strMonoid
+    Transducer(Set(), TransState(0), Map(), Map(), Set())
   }
 
   def subString(begin: Int): Transducer[TransState, Char, List[Char]] = {
@@ -96,7 +80,7 @@ case class TransducerFactory(charSet: Set[Char]) {
     implicit def monoid = strMonoid
 
     if (begin < 0)
-      empty()
+      return empty()
 
     val states = List.range(0, begin + 1).map(i => TransState(i))
 
@@ -108,44 +92,9 @@ case class TransducerFactory(charSet: Set[Char]) {
       charSet.map(c => (states(i), c) -> (if (i < begin) List() else List(c)))
     ).toMap
 
-    Transducer(states.toSet, states(0), delta, eta, states.toSet)
-  }
+    val f = Set(states(begin))
 
-  def before(split: Char): Transducer[TransState, Char, List[Char]] = {
-    implicit def monoid: Monoid[List[Char]] = strMonoid
-
-    val states = List(TransState(0), TransState(1))
-
-    val delta = charSet.map(c => (states(0), c) -> states(if (c == split) 1 else 0)).toMap ++ charSet.map(c => (states(1), c) -> states(1)).toMap
-
-    val eta = charSet.map(c => (states(0), c) -> (if (c == split) List() else List(c))).toMap ++ charSet.map(c => (states(1), c) -> List()).toMap
-
-    Transducer(states.toSet, states(0), delta, eta, states.toSet)
-  }
-
-  def after(split: Char): Transducer[TransState, Char, List[Char]] = {
-    implicit def monoid: Monoid[List[Char]] = strMonoid
-
-    val states = List(TransState(0), TransState(1))
-
-    val delta = charSet.map(c => (states(0), c) -> states(if (c == split) 1 else 0)).toMap ++ charSet.map(c => (states(1), c) -> states(1)).toMap
-
-    val eta = charSet.map(c => (states(0), c) -> List()).toMap ++ charSet.map(c => (states(1), c) -> List(c)).toMap
-
-    Transducer(states.toSet, states(0), delta, eta, states.toSet)
-  }
-
-  def half(evenIdx: Boolean): Transducer[TransState, Char, List[Char]] = {
-    implicit def monoid: Monoid[List[Char]] = strMonoid
-
-    val states = List(TransState(0), TransState(1))
-
-    val delta = charSet.map(c => (states(0), c) -> states(1)).toMap ++ charSet.map(c => (states(1), c) -> states(0)).toMap
-
-    val eta = charSet.map(c => (states(0), c) -> (if (evenIdx) List(c) else List())).toMap ++
-      charSet.map(c => (states(1), c) -> (if (evenIdx) List() else List(c))).toMap
-
-    Transducer(states.toSet, states(0), delta, eta, states.toSet)
+    Transducer(states.toSet, states(0), delta, eta, f)
   }
 
   private def strMonoid: Monoid[List[Char]] = new Monoid[List[Char]] {
@@ -153,5 +102,4 @@ case class TransducerFactory(charSet: Set[Char]) {
 
     def zero: List[Char] = List()
   }
-
 }

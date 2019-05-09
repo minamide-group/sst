@@ -15,31 +15,31 @@ case class SLConsBuilder(formula: Formula) {
   type outputType = (List[AtomicSLCons], Set[RegCons[Char]], Set[Char], Set[IntegerEquation], Map[StrV, Int])
 
   //return a list of conjunctive clauses which are in SL
-  def output: List[outputType] = {
-    def loop(res: List[outputType], queue: List[Set[Atomic]]): List[outputType] = {
+  def output: (List[outputType], List[(String, String)]) = {
+    def loop(res: List[outputType], queue: List[Set[Atomic]], msg : List[(String, String)]): (List[outputType], List[(String, String)]) = {
       queue match {
-        case Nil => res
+        case Nil => (res, msg)
         case x :: xs => {
           if (x.collect { case a: WordDisequation => a }.size > 0)
-            loop(res, xs)
+            loop(res, xs, msg)
           else {
             val we = x.collect { case a: WordEquation => a }.toList
             val strVs = we.flatMap(e => e.strVs).toSet
             val sr = x.collect { case a: StrInRe => a }
             val ie = x.collect { case a: IntegerEquation => a }
             val charSet = x.flatMap(a => a.chars)
-            val chars = if(charSet.isEmpty) Set('a') else charSet
-            val output = SingleSL(we, sr, ie, strVs, chars).output
+            val chars = if (charSet.isEmpty) Set('a') else charSet
+            val (output, newMsg) = SingleSL(we, sr, ie, strVs, chars, msg).output
             if (output.isEmpty)
-              loop(res, xs)
+              loop(res, xs, newMsg)
             else
-              loop(output.get :: res, xs)
+              loop(output.get :: res, xs, newMsg)
           }
         }
       }
     }
 
-    loop(List(), toDNF(formula).toList)
+    loop(List(), toDNF(formula).toList, List())
   }
 
   def toDNF(formula: Formula): Set[Set[Atomic]] = {
@@ -66,26 +66,44 @@ case class SLConsBuilder(formula: Formula) {
   }
 
   //check whether a conjunctive clause is in SL
-  case class SingleSL(we: List[WordEquation], sr: Set[StrInRe], ie: Set[IntegerEquation], strVs: Set[StrV], chars: Set[Char]) {
-    //print(chars)
+  case class SingleSL(we: List[WordEquation], sr: Set[StrInRe], ie: Set[IntegerEquation], weStrVs: Set[StrV], chars: Set[Char],
+                      msg : List[(String, String)]) {
     val tf = TransducerFactory(chars)
     val df = DFAFactory(chars)
     val sf = SSTFactory(chars)
 
-    def output: Option[outputType] = {
+    def output: (Option[outputType],List[(String, String)]) = {
       val strVListOption = checkSL(we)
-      if (strVListOption.isEmpty)
-        None
-      else {
-        // if x is in sr or ie but not in we, then x is not needed to be restricted
-        val strVList = strVListOption.get
-        val map = strVList.zipWithIndex.toMap
-        Some((atomicConstraints(we, map),
-          regularConstraints(sr.filter(p=>strVs(p.left)), map),
-          chars,
-          ie,
-          map))
+      val strVList = if (strVListOption.isEmpty)  List() else strVListOption.get
+
+      if(strVList.isEmpty && weStrVs.nonEmpty) {
+        val name = "clause invalid"
+        val value = "not in SL"
+        return (None, msg:::List((name,value)))
       }
+
+      val map = strVList.zipWithIndex.toMap
+
+      val freeRe = sr.filterNot(p=> weStrVs(p.left))
+      if(freeRe.nonEmpty){ // only check the free variable
+        val freeMap : Map[StrV, Int] = freeRe.map(re => re.left).toList.zipWithIndex.toMap
+        val DFAsNonEmpty = regularConstraints(freeRe, freeMap).map(t=>t.R.states.nonEmpty).reduce(_&&_)
+        if(!DFAsNonEmpty) {
+          val name = "clause invalid"
+          val value = "free regular constraints unsat"
+          return (None, msg:::List((name,value)))
+        }
+      }
+
+      val msg0 = if(freeRe.nonEmpty){
+        val name = "free regular constraints sat and removed"
+        val value = freeRe.toString
+        List((name,value))
+      }else List()
+
+      (Some((atomicConstraints(we, map),
+        regularConstraints(sr.filter(p => weStrVs(p.left)), map),
+        chars, ie, map)), msg:::msg0)
     }
 
     def checkSL(equations: List[WordEquation]): Option[List[StrV]] = {
@@ -123,7 +141,7 @@ case class SLConsBuilder(formula: Formula) {
     //None : not AC
     def checkAC(out: Map[StrV, Set[StrV]], in: Map[StrV, Int]): Option[List[StrV]] = {
       def bfs(res: List[StrV], pos: Int, inDegree: Map[StrV, Int]): Option[List[StrV]] = {
-        if (res.size == strVs.size) {
+        if (res.size == weStrVs.size) {
           Some(res)
         }
         else if (pos < res.size) {
@@ -135,7 +153,7 @@ case class SLConsBuilder(formula: Formula) {
           None
       }
 
-      bfs(strVs.filter(x => in.withDefaultValue(0)(x) == 0).toList, 0, in)
+      bfs(weStrVs.filter(x => in.withDefaultValue(0)(x) == 0).toList, 0, in)
     }
 
     def atomicConstraints(equations: List[WordEquation], map: Map[StrV, Int]): List[AtomicSLCons] = {
@@ -169,9 +187,9 @@ case class SLConsBuilder(formula: Formula) {
             SSTConstraint(map(w.left), sf.replaceAll(a.pattern, a.replacement), map(a.strV))
           }
         }
-        case a: StrAt => TransducerConstraint(map(w.left), tf.at(a.idx), map(a.strV))
+        case a: StrAt => TransducerConstraint(map(w.left), tf.subString(a.idx, a.idx + 1), map(a.strV))
         case a: StrReverse => SSTConstraint(map(w.left), sf.reverse, map(a.strV))
-        case a: StrInsert => SSTConstraint(map(w.left), sf.insert(a.index, a.str) , map(a.strV))
+        case a: StrInsert => SSTConstraint(map(w.left), sf.insert(a.index, a.str), map(a.strV))
       }
     }
 
@@ -180,7 +198,7 @@ case class SLConsBuilder(formula: Formula) {
       def loop(res: DFA[FAState, Char], list: List[DFA[FAState, Char]]): DFA[FAState, Char] = {
         list match {
           case Nil => res
-          case dfa :: xs => loop(res.intersect(dfa).trim.minimize.rename, xs)
+          case dfa :: xs =>loop(dfaIntersect(res,dfa), xs)
         }
       }
 
@@ -201,4 +219,19 @@ case class SLConsBuilder(formula: Formula) {
     }
   }
 
+  private def addDefault(dfa: DFA[FAState, Char], sigma : Set[Char]): DFA[FAState, Char] = {
+    val sink = FAState(-1)
+    val states = dfa.states + sink
+    val defaultDelta = states.flatMap(s=>sigma.map(c=> (s,c)-> sink)).toMap
+    val delta = defaultDelta ++ dfa.δ
+    DFA(states, dfa.s0, delta, dfa.f)
+  }
+
+  private def dfaIntersect(dfa1: DFA[FAState, Char], dfa2: DFA[FAState, Char]) : DFA[FAState, Char] ={
+    val chars_1 = dfa1.δ.map(r=>r._1._2).toSet
+    val chars_2 = dfa2.δ.map(r=>r._1._2).toSet
+    val d1 = addDefault(dfa1, chars_1++chars_2)
+    val d2 = addDefault(dfa2, chars_1++chars_2)
+    d1.intersect(d2).minimize.trim.rename
+  }
 }

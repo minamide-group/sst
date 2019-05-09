@@ -37,8 +37,11 @@ object Main extends App {
       println("unsat")
     msg.foreach(t=> {
       println("-------------------------------")
-      println(t._1+":")
-      println(t._2)
+      print(t._1)
+      if(t._2.nonEmpty){
+        println(":")
+        println(t._2)
+      }
       println()
     })
   }
