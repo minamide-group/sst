@@ -1,0 +1,49 @@
+unsat
+-------------------------------
+Build formula time:
+0.219
+
+-------------------------------
+Build sl time:
+0.231
+
+-------------------------------
+Clause number:
+1
+
+-------------------------------
+chars:
+Set(a, c, b, d)
+
+-------------------------------
+SSTs transformed time:
+0.087
+
+-------------------------------
+SST composed time:
+1.328
+
+-------------------------------
+sst:
+3 states, 2 variables, 5 transitions
+
+-------------------------------
+sst:
+4 states, 3 variables, 10 transitions
+
+-------------------------------
+sst:
+5 states, 3 variables, 15 transitions
+
+-------------------------------
+sst:
+9 states, 4 variables, 24 transitions
+
+-------------------------------
+Clause Unsatisfiable:
+
+
+-------------------------------
+Total time:
+1.42
+

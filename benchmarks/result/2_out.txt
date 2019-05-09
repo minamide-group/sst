@@ -1,0 +1,53 @@
+sat
+-------------------------------
+Build formula time:
+0.206
+
+-------------------------------
+Build sl time:
+0.204
+
+-------------------------------
+Clause number:
+1
+
+-------------------------------
+chars:
+Set(a, c, b, d)
+
+-------------------------------
+SSTs transformed time:
+0.093
+
+-------------------------------
+SST composed time:
+1.125
+
+-------------------------------
+sst:
+3 states, 2 variables, 5 transitions
+
+-------------------------------
+sst:
+4 states, 3 variables, 10 transitions
+
+-------------------------------
+sst:
+5 states, 3 variables, 15 transitions
+
+-------------------------------
+sst:
+8 states, 4 variables, 20 transitions
+
+-------------------------------
+composed sst:
+16 states, 4 variables, 40 transitions
+
+-------------------------------
+Satisfiable:
+clause sat, no integer constraint
+
+-------------------------------
+Total time:
+1.234
+

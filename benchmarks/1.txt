@@ -1,0 +1,20 @@
+(declare-const x String)
+(declare-const x1 String)
+(declare-const x2 String)
+
+
+
+(assert (= x1 (str.replaceall x "a" "b") ) )
+(assert (= x2 (str.++ "a" x1 "a" ) ) )
+(assert (str.in.re x2 
+            (re.++ 
+                (str.to.re "a") 
+                (re.++ (re.* (str.to.re "b") ) 
+                       (str.to.re "a") 
+                ) 
+            ) 
+        ) 
+)
+
+
+(check-sat)
