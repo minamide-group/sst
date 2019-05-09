@@ -50,10 +50,10 @@ case class Checker(file : File) {
     clauses match {
       case Nil =>(Some(false), msg)
       case x :: xs =>{
-        val t1 = System.currentTimeMillis()
+
         val (we, sr, chars, ie, map) = x
+        //println(chars)
         val sstOption = SSTBuilder(we, sr, chars, 0.toChar).output
-        val t2 = System.currentTimeMillis()
 
         val message = (msg ::: List( ("chars", chars.toString))) :::sstOption._3
         if(sstOption._2.isEmpty || sstOption._2.get.states.isEmpty){
@@ -69,7 +69,9 @@ case class Checker(file : File) {
         }
 
         val sst = sstOption._2.get
+        //sst.printDetail
         val sstList = sstOption._1.get
+        //sstList.foreach(i=>i.printDetail)
         val parikh = ParikhBuilder(sst, sstList, we).output
         val z3Input = Z3InputBuilder(ie.toList, parikh, map).output
 

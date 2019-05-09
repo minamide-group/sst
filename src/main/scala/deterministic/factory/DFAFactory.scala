@@ -85,7 +85,7 @@ case class DFAFactory(charSet : Set[Char]) {
 
   def getDFA(regex: String) = removeEps(RegToNFA(parseReg(regex.filterNot(_.isWhitespace)))).toDFA.trim.minimize.rename
 
-  def getDFA(formula : ReturnRe)  = removeEps(RegToNFA(formula)).toDFA.trim.minimize.trim.rename
+  def getDFA(formula : ReturnRe)  = removeEps(RegToNFA(formula)).toDFA.trim.minimize.rename
 
   def parseReg(str: String): RegExp = {
     //assert valid
@@ -189,6 +189,6 @@ case class DFAFactory(charSet : Set[Char]) {
     val newDelta = newStates.flatMap(s=>{
       charSet.map(c=> (s,c)->state)
     }).toMap ++ dfa.δ
-    DFA(newStates, dfa.s0, newDelta, newF).minimize.trim.rename
+    DFA(newStates, dfa.s0, newDelta, newF).minimize.rename
   }
 }

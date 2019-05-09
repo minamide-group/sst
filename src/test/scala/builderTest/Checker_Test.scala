@@ -6,7 +6,7 @@ import builder.Checker
 import org.scalatest.FlatSpec
 
 class Checker_Test extends FlatSpec{
-  val path : String= "C:\\Users\\leaf6\\IdeaProjects\\Automata\\out\\artifacts\\checker\\case3.txt"
+  val path : String= "C:\\Users\\leaf6\\IdeaProjects\\Automata\\out\\artifacts\\checker\\1.txt"
   val file = new File(path)
 
   "checker" should "run" in{

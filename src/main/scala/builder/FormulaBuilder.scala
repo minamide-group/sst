@@ -187,12 +187,16 @@ case class FormulaBuilder(lines : List[String]) {
     else if(tokens(1).equals("str.replaceall")){ //( str.replaceall x "pattern" "replacement" )
       (tokens.drop(6), StrReplaceAll(StrV(tokens(2)), tokens(3).drop(1).dropRight(1), tokens(4).drop(1).dropRight(1)))
     }
+    else if(tokens(1).equals("str.reverse")){ //( str.reverse x )
+      (tokens.drop(4), StrReverse(StrV(tokens(2))))
+    }
     else if(tokens(1).equals("str.substr") && tokens(4).equals(")")){ // ( str.substr x begin )
       (tokens.drop(5), StrSubstr(StrV(tokens(2)), tokens(3).toInt))
     }
     else /*if(tokens(1).equals("str.substr"))*/{ // ( str.substr x begin count )
       (tokens.drop(6), StrSubstrcount(StrV(tokens(2)), tokens(3).toInt, tokens(4).toInt))
     }
+
   }
 
   def parseRegular(tokens : List[String], strV : Set[String], intV : Set[String]): (List[String], ReturnRe) ={

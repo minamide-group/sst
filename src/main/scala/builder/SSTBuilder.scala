@@ -67,6 +67,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     val num = relCons.getLeftIdx
     val name = "sst" + num
     val sst0 = getStem(num, name)
+
     val sst1 = relCons match {
       case c: Concatenation[Σ] => {
         val newF = sst0.f.map(t =>

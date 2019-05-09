@@ -27,7 +27,8 @@ case class SLConsBuilder(formula: Formula) {
             val strVs = we.flatMap(e => e.strVs).toSet
             val sr = x.collect { case a: StrInRe => a }
             val ie = x.collect { case a: IntegerEquation => a }
-            val chars = x.flatMap(a => a.chars)
+            val charSet = x.flatMap(a => a.chars)
+            val chars = if(charSet.isEmpty) Set('a') else charSet
             val output = SingleSL(we, sr, ie, strVs, chars).output
             if (output.isEmpty)
               loop(res, xs)
@@ -66,6 +67,7 @@ case class SLConsBuilder(formula: Formula) {
 
   //check whether a conjunctive clause is in SL
   case class SingleSL(we: List[WordEquation], sr: Set[StrInRe], ie: Set[IntegerEquation], strVs: Set[StrV], chars: Set[Char]) {
+    //print(chars)
     val tf = TransducerFactory(chars)
     val df = DFAFactory(chars)
     val sf = SSTFactory(chars)
@@ -80,7 +82,7 @@ case class SLConsBuilder(formula: Formula) {
         val map = strVList.zipWithIndex.toMap
         Some((atomicConstraints(we, map),
           regularConstraints(sr.filter(p=>strVs(p.left)), map),
-          if(chars.isEmpty) Set('a') else chars,         //make chars not empty to construct SST
+          chars,
           ie,
           map))
       }
@@ -168,6 +170,7 @@ case class SLConsBuilder(formula: Formula) {
           }
         }
         case a: StrAt => TransducerConstraint(map(w.left), tf.at(a.idx), map(a.strV))
+        case a: StrReverse => SSTConstraint(map(w.left), sf.reverse, map(a.strV))
       }
     }
 
