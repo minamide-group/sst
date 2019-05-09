@@ -171,6 +171,7 @@ case class SLConsBuilder(formula: Formula) {
         }
         case a: StrAt => TransducerConstraint(map(w.left), tf.at(a.idx), map(a.strV))
         case a: StrReverse => SSTConstraint(map(w.left), sf.reverse, map(a.strV))
+        case a: StrInsert => SSTConstraint(map(w.left), sf.insert(a.index, a.str) , map(a.strV))
       }
     }
 
