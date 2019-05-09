@@ -37,7 +37,7 @@ case class Checker(file : File) {
     }
     else{
       //foreach clause, check sat
-      val name = "clause number"
+      val name = "Clause number"
       val value = clauses.size.toString
       val (res, msg) = checkLoop(clauses, message:::List((name, value)))
       val t4 = System.currentTimeMillis()
@@ -48,23 +48,17 @@ case class Checker(file : File) {
   def checkLoop(clauses : List[(List[AtomicSLCons], Set[RegCons[Char]], Set[Char], Set[IntegerEquation], Map[StrV, Int])],
                 msg : List[(String, String)]): (Option[Boolean], List[(String, String)]) ={
     clauses match {
-      case Nil =>{
-        val name = "Unsatisfiable"
-        val value = "No SL clause is satisfiable"
-        (Some(false), msg ::: List((name, value)))
-      }
+      case Nil =>(Some(false), msg)
       case x :: xs =>{
         val t1 = System.currentTimeMillis()
         val (we, sr, chars, ie, map) = x
         val sstOption = SSTBuilder(we, sr, chars, 0.toChar).output
         val t2 = System.currentTimeMillis()
 
-        val message = msg ::: List(
-          ("SST compose time", getTimeSecond(t1,t2))
-        )
+        val message = (msg ::: List( ("chars", chars.toString))) :::sstOption._3
         if(sstOption._2.isEmpty || sstOption._2.get.states.isEmpty){
-          val name = "Unsatisfiable"
-          val value = "clause unsat"
+          val name = "Clause Unsatisfiable"
+          val value = ""
           return checkLoop(xs, message ::: List((name, value)))
         }
 

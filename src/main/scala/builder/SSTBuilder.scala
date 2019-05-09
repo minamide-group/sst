@@ -15,15 +15,29 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
   type MySST[X] = SST[SST_State, Σ, X, SST_Var]
   type Out[X] = Either[SST_Var, X]
 
-  def output: (Option[List[MySST[Σ]]], Option[MySST[Int]]) = {
+  def output: (Option[List[MySST[Σ]]], Option[MySST[Int]], List[(String, String)]) = {
     if (chars.contains(split))
-      (None, None)
+      (None, None, List(("SST build failed", "alphabet contains split")))
     else {
+      val t1 = System.currentTimeMillis()
       val sstList = constraintsToSSTs(atomicSLCons, regCons)
+      val t2 = System.currentTimeMillis()
       val sst = composeSSTs(sstList)
-      (Some(sstList), sst)
+      val t3 = System.currentTimeMillis()
+
+      val msg = List(("SSTs transformed time", getTimeSecond(t1,t2)), ("SST composed time", getTimeSecond(t2,t3))) :::
+        sstList.map(s=> ("sst", s.states.size+" states, " + s.vars.size + " variables, " + s.δ.size + " transitions")) :::
+        (if(sst.isEmpty) List()
+        else {
+          val s = sst.get
+          List(("composed sst", s.states.size+" states, " + s.vars.size + " variables, " + s.δ.size + " transitions"))
+        })
+
+      (Some(sstList), sst,  msg)
     }
   }
+
+  def getTimeSecond(start : Long, end : Long) : String = ((end-start)*1.0/1000).toString
 
   def getStem(num: Int, name: String): MySST[Σ] = {
     //return a sst with |vars| = num, and |states| = num + 1

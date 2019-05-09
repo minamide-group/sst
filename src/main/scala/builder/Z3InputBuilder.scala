@@ -1,6 +1,7 @@
 package builder
 
 import formula.atomic.IntegerEquation
+import formula.integer.IntV
 import formula.str.StrV
 
 case class Z3InputBuilder(intCons: List[IntegerEquation],
@@ -12,8 +13,8 @@ case class Z3InputBuilder(intCons: List[IntegerEquation],
     getDeclare + getLength() + getIntegerCons + "(check-sat)"
   }
 
-  val strVs = intCons.flatMap(e => e.strVs)
-  val intVs = intCons.flatMap(e => e.intVs)
+  val strVs : Set[StrV]= intCons.flatMap(e => e.strVs).toSet
+  val intVs : Set[IntV]= intCons.flatMap(e => e.intVs).toSet
   val m0: Map[Int, Int] = map.map(t => t._2 -> 0) // default length increment is 0
   val list: List[(Map[Int, Int], List[Map[Int, Int]])] = semiLinear.toList.map(r => (m0 ++ r._1, r._2.toList.map(t => m0 ++ t)))
   val vecVars: List[(Int, Int)] = List.range(0, list.size).flatMap(i => List.range(0, list(i)._2.size).map(j => (i, j)))
@@ -48,7 +49,7 @@ case class Z3InputBuilder(intCons: List[IntegerEquation],
     }
 
     val parikh = combine(List.range(0, list.size).map(i => // i-th linear set
-      combine(strVs.filter(x => map.contains(x)).map(v =>
+      combine(strVs.toList.filter(x => map.contains(x)).map(v =>
         getLinear(i, list(i)._1(map(v)), getStrName(v), List.range(0, list(i)._2.size).map(j => j -> list(i)._2(j)(map(v))).toMap) //j-th vector
       ), "and")
     ).filter(_.nonEmpty), "or")
