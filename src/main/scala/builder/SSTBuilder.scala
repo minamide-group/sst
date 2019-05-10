@@ -142,7 +142,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     val list = sstList.dropRight(1)
     val last = renameToInt(sstList.last)
     if (list.isEmpty)
-      Some(last)
+      Some(last.trim)
     else if (list.size == 1) {
       val sst = compose(list(0), last)
       if (sst.f.isEmpty)
@@ -170,7 +170,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
         }
       }
 
-      star(addDefault(compose(list(0), list(1))), list.drop(2), last)
+      star(compose(list(0), list(1)), list.drop(2), last)
     }
   }
 
@@ -210,7 +210,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
       replacement.δ.map(r => (toNewStates(r._1._1), r._1._2) -> (unit + (v -> listC(v, r._1._2)))) ++
       replacement.f.map(qf => (toNewStates(qf), split) -> unit)
 
-    val res = SST(newStates, newS0, sst.vars, newDelta, newEta, sst.f).trim
+    val res = SST(newStates, newS0, sst.vars, newDelta, newEta, sst.f)
     res
   }
 
@@ -342,6 +342,6 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     Transducer(trans.states + sink, trans.s0, trans.δ.withDefaultValue(sink), trans.η, trans.f)
   }
 
-  private def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = Composition.compose(sst1, sst2).trim.rename("r0")
+  private def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = Composition.compose(addDefault(sst1.trim), addDefault(sst2.trim)).trim.rename("r0")
 
 }
