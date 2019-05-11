@@ -1,45 +1,5 @@
 sat
--------------------------------
-Build formula time:
-0.219
-
--------------------------------
-Build sl time:
-0.213
-
--------------------------------
-Clause number:
-1
-
--------------------------------
-chars:
-Set(a, b)
-
--------------------------------
-SSTs transformed time:
-0.057
-
--------------------------------
-SST composed time:
-0.003
-
--------------------------------
-sst:
-6 states, 2 variables, 4 transitions
-
--------------------------------
-composed sst:
-6 states, 2 variables, 4 transitions
-
--------------------------------
-Satisfiable:
-clause sat, with integer constraints
-
--------------------------------
-Z3 check time:
-0.112
-
--------------------------------
-Total time:
-0.277
-
+(model
+  (define-fun x0 () String
+    "aba")
+)

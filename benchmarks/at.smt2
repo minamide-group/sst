@@ -7,3 +7,4 @@
 (assert (str.in.re x0 (str.to.re "")))
 
 (check-sat)
+(get-model)

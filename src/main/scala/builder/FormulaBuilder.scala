@@ -1,34 +1,38 @@
 package builder
 
-import formula.{Conjunction, Disjunction, Formula, Negation}
+import formula.{Conjunction, Disjunction, ReturnBoolean, Negation}
 import formula.atomic.{IntegerEquation, StrInRe, WordEquation}
 import formula.integer._
 import formula.re._
 import formula.str._
 
 case class FormulaBuilder(lines : List[String]) {
-  //assert valid
 
-  def output : Formula = {
+  def output : (ReturnBoolean, Boolean) = {
 
-    def loop(tokens : List[String], p : Formula, strV : Set[String], intV : Set[String]) : (Formula, Set[String], Set[String])={
+    def loop(tokens : List[String], p : ReturnBoolean, strV : Set[String], intV : Set[String], checkSat : Boolean, getModel : Boolean
+            ) : (ReturnBoolean, Set[String], Set[String], Boolean, Boolean)={
       if(tokens(1).equals("check-sat")){
-        (p, strV, intV)
+        val temp = parseCheckSat(tokens)
+        if(temp.isEmpty)
+          (p, strV, intV, true, getModel)
+        else /*if(temp(1).equals("get-model"))*/
+          (p, strV, intV, true, true)
       }
       else if(tokens(1).startsWith("declare")){
         val (temp, strV1, intV1) = parseDeclare(tokens, strV, intV)
-        loop(temp, p, strV1, intV1)
+        loop(temp, p, strV1, intV1, checkSat, getModel)
       }
       else /*if(tokens(1).equals("assert"))*/ {
         val (temp, formula) = parseAssert(tokens, strV, intV)
         if(p==null)
-          loop(temp, formula, strV, intV)
+          loop(temp, formula, strV, intV, checkSat, getModel)
         else
-          loop(temp, Conjunction(p, formula), strV, intV)
+          loop(temp, Conjunction(p, formula), strV, intV, checkSat, getModel)
       }
     }
-    val (res, _, _) = loop(getTokens(lines), null, Set(), Set())
-    res
+    val (res, _,  _, _, getModel) = loop(getTokens(lines), null, Set[String](), Set[String](), false, false)
+    (res, getModel)
   }
 
   val diseq = Map(
@@ -39,7 +43,7 @@ case class FormulaBuilder(lines : List[String]) {
   )
 
   def getTokens(lines : List[String]) : List[String] = {
-    val source = lines.filterNot(_.isEmpty).filterNot(_.startsWith(";")).filterNot(_.toList.foldLeft(true) { (x, y) => x && (y.isWhitespace) })
+    val source = lines.filterNot(_.isEmpty).filterNot(_.startsWith(";")).filterNot(_.toList.forall(y => y.isWhitespace))
       .mkString.replaceAll("\\(", " ( ").replaceAll("\\)", " ) ").toList
     def loop(quote : Boolean, source : List[Char], temp : String, res : List[String]) : List[String] ={
       source match {
@@ -70,13 +74,13 @@ case class FormulaBuilder(lines : List[String]) {
     }
   }
 
-  def parseAssert(tokens : List[String], strV : Set[String], intV : Set[String]): (List[String], Formula) ={
+  def parseAssert(tokens : List[String], strV : Set[String], intV : Set[String]): (List[String], ReturnBoolean) ={
     //( assert ... )
     val (temp, formula) = parseFormula(tokens.drop(2), strV, intV)
     (temp.drop(1), formula)
   }
 
-  def parseFormula(tokens : List[String], strV : Set[String], intV : Set[String]): (List[String], Formula) ={
+  def parseFormula(tokens : List[String], strV : Set[String], intV : Set[String]): (List[String], ReturnBoolean) ={
 
     if( tokens(1).equals("=") ) { //( = ()  ()  )
       def intEq(queue : List[String], count : Int) : Boolean = {
@@ -86,7 +90,7 @@ case class FormulaBuilder(lines : List[String]) {
           queue match {
             case x::xs if x.equals("(")=> intEq(xs, count+1)
             case x::xs if x.equals(")")=> intEq(xs, count-1)
-            case x::_ if x forall Character.isDigit => true
+            case x::_ if (x.head == '-' || x.head== '+' || x.head.isDigit) && (x.drop(1) forall Character.isDigit) => true
             case x::_ if x.equals("str.len") => true
             case x::_ if intV.contains(x) => true
             case x::_ if strV.contains(x) => false
@@ -222,4 +226,8 @@ case class FormulaBuilder(lines : List[String]) {
       (temp2.drop(1), ReUnion(re1, re2))
     }
   }
+
+  def parseCheckSat(tokens : List[String]) : List[String] = tokens.drop(3) //( check-sat )
+
+  def parseGetModel(tokens : List[String]) : List[String] = tokens.drop(3) //( get-model )
 }

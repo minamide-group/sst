@@ -1,17 +1,9 @@
-undefine
--------------------------------
-clause invalid:
-free regular constraints unsat
-
--------------------------------
-Build formula time:
-0.212
-
--------------------------------
-Build sl time:
-0.15
-
--------------------------------
-Building Formula Failed:
-No Straight Line Clauses
-
+sat
+(model
+  (define-fun x () String
+    "a")
+  (define-fun y () String
+    "b")
+  (define-fun z () String
+    "a")
+)

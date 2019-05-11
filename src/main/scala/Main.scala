@@ -29,20 +29,12 @@ object Main extends App {
   def processFile(file: File): Unit = {
     val (res, msg) = Checker(file).output
 
-    if(res.isEmpty)
-      println("unsat")
-    else if(res.get)
+    if(res)
       println("sat")
     else
       println("unsat")
-    msg.foreach(t=> {
-      println("-------------------------------")
-      print(t._1)
-      if(t._2.nonEmpty){
-        println(":")
-        println(t._2)
-      }
-      println()
-    })
+
+    if(msg.nonEmpty)
+      println(msg)
   }
 }

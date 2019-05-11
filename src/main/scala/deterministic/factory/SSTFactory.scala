@@ -176,4 +176,8 @@ case class SSTFactory(charSet: Set[Char]) {
     next.map(c => star(List(c)))
   }
 
+  def emptySST: SST[SST_State, Char, Char, SST_Var] ={
+    val s0 = SST_State(0, "empty")
+    SST(Set(), s0, Set(), Map(), Map(),Map())
+  }
 }

@@ -111,4 +111,5 @@ case class DFA[Q, Σ](
     DFA(states, init, rules, accept)
   }
 
+  def alphabet : Set[Σ] = δ.map(t=>t._1._2).toSet
 }

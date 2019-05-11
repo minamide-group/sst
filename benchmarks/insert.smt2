@@ -8,3 +8,4 @@
 (assert (str.in.re x1 (str.to.re "aba")))
 
 (check-sat)
+(get-model)

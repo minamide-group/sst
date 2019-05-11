@@ -191,4 +191,20 @@ case class DFAFactory(charSet : Set[Char]) {
     }).toMap ++ dfa.δ
     DFA(newStates, dfa.s0, newDelta, newF).minimize.rename
   }
+
+  def addDefault(dfa: DFA[FAState, Char], sigma : Set[Char]): DFA[FAState, Char] = {
+    val sink = FAState(-1)
+    val states = dfa.states + sink
+    val defaultDelta = states.flatMap(s=>sigma.map(c=> (s,c)-> sink)).toMap
+    val delta = defaultDelta ++ dfa.δ
+    DFA(states, dfa.s0, delta, dfa.f)
+  }
+
+  def dfaIntersect(dfa1: DFA[FAState, Char], dfa2: DFA[FAState, Char]) : DFA[FAState, Char] ={
+    val chars_1 = dfa1.alphabet
+    val chars_2 = dfa2.alphabet
+    val d1 = addDefault(dfa1, chars_1++chars_2)
+    val d2 = addDefault(dfa2, chars_1++chars_2)
+    d1.intersect(d2).minimize.trim.rename
+  }
 }

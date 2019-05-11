@@ -1,5 +1,5 @@
 package formula.atomic
 
-import formula.Formula
+import formula.ReturnBoolean
 
-trait Atomic extends Formula
+trait Atomic extends ReturnBoolean

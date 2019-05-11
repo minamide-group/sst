@@ -10,18 +10,18 @@ import formula.atomic._
 import formula.str._
 
 //from formula to a set of SL constraints
-case class SLConsBuilder(formula: Formula) {
+case class SLConsBuilder(formula: ReturnBoolean) {
 
   type outputType = (List[AtomicSLCons], Set[RegCons[Char]], Set[Char], Set[IntegerEquation], Map[StrV, Int])
 
   //return a list of conjunctive clauses which are in SL
-  def output: (List[outputType], List[(String, String)]) = {
-    def loop(res: List[outputType], queue: List[Set[Atomic]], msg : List[(String, String)]): (List[outputType], List[(String, String)]) = {
+  def output: List[outputType] = {
+    def loop(res: List[outputType], queue: List[Set[Atomic]]): List[outputType]= {
       queue match {
-        case Nil => (res, msg)
+        case Nil => res
         case x :: xs => {
           if (x.collect { case a: WordDisequation => a }.size > 0)
-            loop(res, xs, msg)
+            loop(res, xs)
           else {
             val we = x.collect { case a: WordEquation => a }.toList
             val sr = x.collect { case a: StrInRe => a }
@@ -29,20 +29,22 @@ case class SLConsBuilder(formula: Formula) {
             val ie = x.collect { case a: IntegerEquation => a }
             val charSet = x.flatMap(a => a.chars)
             val chars = if (charSet.isEmpty) Set('a') else charSet
-            val (output, newMsg) = SingleSL(we, sr, ie, strVs, chars, msg).output
+            val output = SingleSL(we, sr, ie, strVs, chars).output
             if (output.isEmpty)
-              loop(res, xs, newMsg)
+              loop(res, xs)
             else
-              loop(output.get :: res, xs, newMsg)
+              loop(output.get :: res, xs)
           }
         }
       }
     }
 
-    loop(List(), toDNF(formula).toList, List())
+    if(formula==null)
+      return List()
+    loop(List(), toDNF(formula).toList)
   }
 
-  def toDNF(formula: Formula): Set[Set[Atomic]] = {
+  def toDNF(formula: ReturnBoolean): Set[Set[Atomic]] = {
     formula match {
       case dis: Disjunction => toDNF(dis.p1) ++ toDNF(dis.p2)
       case con: Conjunction => {
@@ -66,27 +68,24 @@ case class SLConsBuilder(formula: Formula) {
   }
 
   //check whether a conjunctive clause is in SL
-  case class SingleSL(we: List[WordEquation], sr: Set[StrInRe], ie: Set[IntegerEquation], strVs: Set[StrV], chars: Set[Char],
-                      msg : List[(String, String)]) {
+  case class SingleSL(we: List[WordEquation], sr: Set[StrInRe], ie: Set[IntegerEquation], strVs: Set[StrV], chars: Set[Char]) {
     val tf = TransducerFactory(chars)
     val df = DFAFactory(chars)
     val sf = SSTFactory(chars)
 
-    def output: (Option[outputType],List[(String, String)]) = {
+    def output: Option[outputType] = {
       val strVListOption = checkSL(we)
       val strVList = if (strVListOption.isEmpty)  List() else strVListOption.get
 
       if(strVList.isEmpty && strVs.nonEmpty) {
-        val name = "clause invalid"
-        val value = "not in SL"
-        return (None, msg:::List((name,value)))
+        return None
       }
 
       val map = strVList.zipWithIndex.toMap
 
       (Some((atomicConstraints(we, map),
         regularConstraints(sr.filter(p => strVs(p.left)), map),
-        chars, ie, map)), msg)
+        chars, ie, map)))
     }
 
     def checkSL(equations: List[WordEquation]): Option[List[StrV]] = {

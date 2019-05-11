@@ -1,0 +1,7 @@
+sat
+(model
+  (define-fun x () String
+    "a")
+  (define-fun y () String
+    "b")
+)

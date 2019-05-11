@@ -8,3 +8,4 @@
 
 
 (check-sat)
+(get-model)

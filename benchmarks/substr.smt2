@@ -9,3 +9,4 @@
 
 
 (check-sat)
+(get-model)

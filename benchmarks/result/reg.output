@@ -1,19 +1,5 @@
 sat
--------------------------------
-free regular constraints sat and removed:
-Set(StrInRe(StrV(x),StrToRe(a),false))
-
--------------------------------
-Build formula time:
-0.212
-
--------------------------------
-Build sl time:
-0.14
-
--------------------------------
-Clause number:
-1
-
--------------------------------
-Empty clause
+(model
+  (define-fun x () String
+    "a")
+)
