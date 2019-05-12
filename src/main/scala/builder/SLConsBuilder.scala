@@ -72,6 +72,8 @@ case class SLConsBuilder(formula: ReturnBoolean) {
     val tf = TransducerFactory(chars)
     val df = DFAFactory(chars)
     val sf = SSTFactory(chars)
+    val we_defined_strVs = we.map(t=>t.left).toSet
+    val sr_defined_strVs = sr.map(t=>t.left).toSet
 
     def output: Option[outputType] = {
       val strVListOption = checkSL(we)
@@ -135,7 +137,10 @@ case class SLConsBuilder(formula: ReturnBoolean) {
           None
       }
 
-      bfs(strVs.filter(x => in.withDefaultValue(0)(x) == 0).toList, 0, in)
+      val in0 = strVs.filter(x => in.withDefaultValue(0)(x) == 0)
+      val in0_we = in0.intersect(we_defined_strVs)
+      val in0_sr = in0 -- in0_we
+      bfs(in0_sr.toList ::: in0_we.toList, 0, in)
     }
 
     def atomicConstraints(equations: List[WordEquation], map: Map[StrV, Int]): List[AtomicSLCons] = {

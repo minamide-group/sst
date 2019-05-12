@@ -36,12 +36,10 @@ case class Checker(file : File) {
 
   def check(clause: Clause) : (Boolean, String) = {
     val (we, sr, chars, ie, nameToIdx) = clause
-
     val split = 655.toChar
     val getLength = ie.flatMap(t=>t.strVs).intersect(nameToIdx.keySet).nonEmpty
     val (sstList, sstInt, sstChar, sstSat) = SSTBuilder(we, sr, chars, split, nameToIdx.size, getModel, getLength).output
-    println(nameToIdx)
-    sstList.foreach(println)
+
     if(!sstSat)
       return (false, "")
     if(ie.isEmpty){
