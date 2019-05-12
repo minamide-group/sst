@@ -20,10 +20,10 @@ class SSTBuilder_Test extends FlatSpec{
     val consList = SLConsBuilder(formula).output
 
     val cons = consList(0)
-    val sst = SSTBuilder(cons._1, cons._2, cons._3, '#', 5, getModel = false).output
+    val sst = SSTBuilder(cons._1, cons._2, cons._3, '#', 5, false, false).output
 
-    sst._1.get.foreach(i=>i.print)
-    sst._2.get.print
+    sst._1.foreach(i=>i.print)
+    sst._2.print
   }
 
   "getModel" should "run" in{
@@ -36,11 +36,11 @@ class SSTBuilder_Test extends FlatSpec{
     val consList = SLConsBuilder(formula).output
 
     val cons = consList(0)
-    val sst = SSTBuilder(cons._1, cons._2, cons._3, '#', 5, getModel = true).output
+    val sst = SSTBuilder(cons._1, cons._2, cons._3, '#', 5, true, false).output
 
     //sst._1.get.foreach(i=>i.print)
-    sst._2.get.print
-    sst._3.get.print
+    sst._2.print
+    sst._3.print
   }
 
   "not getModel only regular" should "run" in{
@@ -51,9 +51,9 @@ class SSTBuilder_Test extends FlatSpec{
     val consList = SLConsBuilder(formula).output
 
     val cons = consList(0)
-    val sst = SSTBuilder(cons._1, cons._2, cons._3, '#', 1, getModel = false).output
+    val sst = SSTBuilder(cons._1, cons._2, cons._3, '#', 1, false, true).output
 
-    sst._2.get.print
+    sst._2.print
   }
 
   "getModel only regular" should "run" in{
@@ -64,10 +64,10 @@ class SSTBuilder_Test extends FlatSpec{
     val consList = SLConsBuilder(formula).output
 
     val cons = consList(0)
-    val sst = SSTBuilder(cons._1, cons._2, cons._3, '#', 1, getModel = true).output
+    val sst = SSTBuilder(cons._1, cons._2, cons._3, '#', 1, true, false).output
 
-    sst._2.get.printDetail
-    sst._3.get.printDetail
+    sst._2.printDetail
+    sst._3.printDetail
   }
 
   "not getModel only regular unsat" should "run" in{
@@ -78,9 +78,9 @@ class SSTBuilder_Test extends FlatSpec{
     val consList = SLConsBuilder(formula).output
 
     val cons = consList(0)
-    val sst = SSTBuilder(cons._1, cons._2, cons._3, '#', 1, getModel = true).output
+    val sst = SSTBuilder(cons._1, cons._2, cons._3, '#', 1, true, false).output
 
-    sst._2.get.print
-    sst._3.get.print
+    sst._2.print
+    sst._3.print
   }
 }

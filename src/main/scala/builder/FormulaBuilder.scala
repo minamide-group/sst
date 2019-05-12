@@ -167,7 +167,7 @@ case class FormulaBuilder(lines : List[String]) {
       (tokens.drop(1), StrV(tokens(0)))
     }
     else if(!tokens(0).equals("(")){//"abc"
-      (tokens.drop(0), StrConcat(List(Right(tokens(0).drop(1).dropRight(1)))))
+      (tokens.drop(1), StrConcat(List(Right(tokens(0).drop(1).dropRight(1)))))
     }
     else if(tokens(1).equals("str.at")){ // ( str.at  x  1 )
       (tokens.drop(5), StrAt(StrV(tokens(2)),tokens(3).toInt))

@@ -35,15 +35,18 @@ case class Checker(file : File) {
   }
 
   def check(clause: Clause) : (Boolean, String) = {
-    val (we, sr, chars, ie, nameToidx) = clause
-    val split = 0.toChar
-    val (sstList, sstInt, sstChar) = SSTBuilder(we, sr, chars, split, nameToidx.size, getModel).output
+    val (we, sr, chars, ie, nameToIdx) = clause
 
-    if(sstList.isEmpty || sstInt.isEmpty || sstInt.get.states.isEmpty)
+    val split = 655.toChar
+    val getLength = ie.flatMap(t=>t.strVs).intersect(nameToIdx.keySet).nonEmpty
+    val (sstList, sstInt, sstChar, sstSat) = SSTBuilder(we, sr, chars, split, nameToIdx.size, getModel, getLength).output
+    println(nameToIdx)
+    sstList.foreach(println)
+    if(!sstSat)
       return (false, "")
     if(ie.isEmpty){
       if(getModel) {
-        val witness = WitnessBuilder("", nameToidx, sstChar.get, null, chars, split).output
+        val witness = WitnessBuilder("", nameToIdx, sstChar, null, chars, split).output
         return (true, witness)
       }
       else{
@@ -51,18 +54,16 @@ case class Checker(file : File) {
       }
     }
 
-
-    val semilinearSet = ParikhBuilder(sstInt.get, sstList.get, we).output
-    val z3Input = Z3InputBuilder(ie.toList, semilinearSet, nameToidx, getModel).output
+    val semiLinear = ParikhBuilder(sstInt, sstList, we).output
+    val z3Input = Z3InputBuilder(ie.toList, semiLinear, nameToIdx, getModel).output
     val z3Output = executeZ3(z3Input)
-
 
     if(!z3Output.startsWith("sat")) {
       return (false, "")
     }
     else{
       if(getModel) {
-        val witness = WitnessBuilder(z3Output, nameToidx, sstChar.get, sstInt.get, chars, split).output
+        val witness = WitnessBuilder(z3Output, nameToIdx, sstChar, sstInt, chars, split).output
         return (true, witness)
       }
       else

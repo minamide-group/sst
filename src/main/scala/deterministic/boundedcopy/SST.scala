@@ -115,7 +115,7 @@ case class SST[Q, Σ, Γ, X](
   }
 
   def usedVars: Set[X] = {
-    val simpleDelta : Map[(Q, Q), Map[X, Set[X]]] = δ.map(r => ((r._1._1, r._2), r._1._2, η(r._1))).groupBy(_._1).map(t=> {
+    val simpleDelta : Map[(Q, Q), Map[X, Set[X]]] = δ.map(r => ((r._1._1, r._2), r._1._2, η.withDefaultValue(Map())(r._1))).groupBy(_._1).map(t=> {
       def getNext(queue : List[Map[X, Set[X]]], res : Map[X, Set[X]]):Map[X, Set[X]] = {
         queue match {
           case Nil => res
@@ -144,7 +144,7 @@ case class SST[Q, Σ, Γ, X](
   }
 
   def nonEmptyVars: Set[X] = {
-    val simpleDelta : Map[(Q, Q), Map[X, (Set[X], Set[Γ])]] = δ.map(r => ((r._1._1, r._2), r._1._2, η(r._1))).groupBy(_._1).map(t=> {
+    val simpleDelta : Map[(Q, Q), Map[X, (Set[X], Set[Γ])]] = δ.map(r => ((r._1._1, r._2), r._1._2, η.withDefaultValue(Map())(r._1))).groupBy(_._1).map(t=> {
       def getNext(queue : List[Map[X, (Set[X], Set[Γ])]], res : Map[X, (Set[X], Set[Γ])]):Map[X, (Set[X], Set[Γ])] = {
         queue match {
           case Nil => res

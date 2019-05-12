@@ -13,25 +13,24 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
                          chars: Set[Σ],
                          split: Σ,
                          varNum : Int,
-                         getModel : Boolean) {
+                         getModel : Boolean,
+                         getLength : Boolean) {
 
   type MySST[X] = SST[SST_State, Σ, X, SST_Var]
   type Out[X] = Either[SST_Var, X]
 
-  def output: (Option[List[MySST[Σ]]], Option[MySST[Int]], Option[MySST[Σ]]) = {
+  def output: (List[MySST[Σ]], MySST[Int], MySST[Σ], Boolean) = {
     if (atomicSLCons.isEmpty && regCons.isEmpty)
-      (None, None, None)
+      (List(), null, null, true)
     else {
       val sstListOption = constraintsToSSTs(atomicSLCons, regCons)
 
       if(sstListOption.isEmpty)
-        (None, None, None)
+        (List(), null, null, false)
       else{
         val sstList = sstListOption.get
-        val (sst_int, sst_char) = composeSSTs(sstList, getModel)
-        (sstListOption,
-          Some(sst_int),
-          if (getModel) Some(sst_char) else None)
+        val (sst_int, sst_char, sstNonEmpty) = composeSSTs(sstList, getModel, getLength)
+        (sstList, sst_int, sst_char, sstNonEmpty)
       }
     }
   }
@@ -128,17 +127,34 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     star(list, varDFA, List())
   }
 
-  def composeSSTs(sstList: List[MySST[Σ]], getModel : Boolean): (MySST[Int], MySST[Σ]) = {
+  def composeSSTs(sstList: List[MySST[Σ]], getModel : Boolean, getLength : Boolean): (MySST[Int], MySST[Σ], Boolean) = {
     val list = sstList.dropRight(1)
-    val last_char = sstList.last
-    val last_int = renameToInt(last_char)
-    if(list.size==0)
-      (last_int, last_char)
+    val last_char = sstList.last.trim
+    if(list.size==0) {
+      if(getLength && getModel)
+        (renameToInt(last_char), last_char, last_char.states.nonEmpty)
+      else if(getLength){
+        (renameToInt(last_char), null, last_char.states.nonEmpty)
+      }
+      else{
+        (null, last_char, last_char.states.nonEmpty)
+      }
+    }
     else{
       val sst0 = composeSSTs(list)
-      val sst_int = compose(sst0, last_int)
-      val sst_char = if(getModel) compose(sst0, last_char) else null
-      (sst_int, sst_char)
+      if(getLength && getModel) {
+        val sst_int = compose(sst0, renameToInt(last_char))
+        val sst_char = compose(sst0, last_char)
+        (sst_int, sst_char, sst_char.states.nonEmpty)
+      }
+      else if(getLength){
+        val sst_int = compose(sst0, renameToInt(last_char))
+        (sst_int, null, sst_int.states.nonEmpty)
+      }
+      else{
+        val sst_char = compose(sst0, last_char)
+        ( null, sst_char, sst_char.states.nonEmpty)
+      }
     }
   }
 
@@ -297,12 +313,13 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     val sink = SST_State(-1, sst.s0.name + "sink")
     val states = sst.states + sink
     val alphabet = chars + split
+    val variables = if(sst.vars.nonEmpty) sst.vars else Set(SST_Var(-1, sst.s0.name))
     val defaultDelta = states.flatMap(s=>alphabet.map(c=> (s,c)->sink)).toMap
-    val defaultUpdate = sst.vars.map(x=> x->List[Either[SST_Var, X]]()).toMap
+    val defaultUpdate = variables.map(x=> x->List[Either[SST_Var, X]]()).toMap
     val defaultEta = states.flatMap(s=>alphabet.map(c=> (s,c)->defaultUpdate)).toMap
-    SST(states, sst.s0, sst.vars,
+    SST(states, sst.s0, variables,
       defaultDelta ++ sst.δ,
-      defaultEta ++ sst.η,
+      defaultEta ++ sst.η.map(r=> r._1->(defaultUpdate ++ r._2)),
       sst.f
     )
   }

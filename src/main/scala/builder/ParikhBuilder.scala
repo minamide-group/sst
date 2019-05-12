@@ -8,8 +8,13 @@ case class ParikhBuilder[Σ](sst : SST[SST_State, Σ, Int, SST_Var],
                             sstList : List[SST[SST_State, Σ, Σ, SST_Var]],
                             atomicCons: List[AtomicSLCons]) {
 
-  def output = {
-    getParikhImage(sst, sstList, atomicCons)
+  def output: Set[(Map[Int, Int], Set[Map[Int, Int]])] = {
+    //(1) there are only integer constraints, so sstList is empty
+    //(2) integer constraints contain no variables of sst, in this case sst_int is not constructed
+    if(sstList.isEmpty || sst==null)
+      Set()
+    else
+      getParikhImage(sst, sstList, atomicCons)
   }
 
   type MySST[X] = SST[SST_State, Σ, X, SST_Var]

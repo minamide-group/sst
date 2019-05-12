@@ -77,15 +77,15 @@ case class SLConsBuilder(formula: ReturnBoolean) {
       val strVListOption = checkSL(we)
       val strVList = if (strVListOption.isEmpty)  List() else strVListOption.get
 
-      if(strVList.isEmpty && strVs.nonEmpty) {
+      if(strVList.isEmpty && strVs.nonEmpty) {//not int SL
         return None
       }
 
-      val map = strVList.zipWithIndex.toMap
+      val nameToIdx = strVList.zipWithIndex.toMap
 
-      (Some((atomicConstraints(we, map),
-        regularConstraints(sr.filter(p => strVs(p.left)), map),
-        chars, ie, map)))
+      (Some((atomicConstraints(we, nameToIdx),
+        regularConstraints(sr.filter(p => strVs(p.left)), nameToIdx),
+        chars, ie, nameToIdx)))
     }
 
     def checkSL(equations: List[WordEquation]): Option[List[StrV]] = {

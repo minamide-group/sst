@@ -21,10 +21,10 @@ class Witness_Test extends FlatSpec{
 
     val (we, sr, chars, _, map)  = SLConsBuilder(p).output.head
 
-    val sstList = SSTBuilder(we, sr, chars, split, 3, false).constraintsToSSTs(we, sr).get
+    val sstList = SSTBuilder(we, sr, chars, split, 3, false, false).constraintsToSSTs(we, sr).get
     //sstList.foreach(_.printDetail)
 
-    val sst = SSTBuilder(we, sr, chars, 0.toChar, 3, false).compose(sstList.head, sstList.last)
+    val sst = SSTBuilder(we, sr, chars, 0.toChar, 3, false, false).compose(sstList.head, sstList.last)
     //sst.printDetail
 
     val wb = WitnessBuilder("", map, sst, null, chars, split)
@@ -43,13 +43,13 @@ class Witness_Test extends FlatSpec{
     val (we, sr, chars, _, map)  = SLConsBuilder(p).output.head
     //println(map)
 
-    val sstList = SSTBuilder(we, sr, chars, split, 3, false).constraintsToSSTs(we, sr).get
+    val sstList = SSTBuilder(we, sr, chars, split, 3, false, false).constraintsToSSTs(we, sr).get
     //println(sstList.size)
     //sstList.foreach(_.printDetail)
 
 
-    val sst_0 = SSTBuilder(we, sr, chars, 0.toChar, 3, false).compose(sstList.head, sstList(1))
-    val sst = SSTBuilder(we, sr, chars, 0.toChar, 3, false).compose(sst_0, sstList(2))
+    val sst_0 = SSTBuilder(we, sr, chars, 0.toChar, 3, false, false).compose(sstList.head, sstList(1))
+    val sst = SSTBuilder(we, sr, chars, 0.toChar, 3, false, false).compose(sst_0, sstList(2))
     sst.printDetail
     //println(sst.process(""))
 
@@ -67,13 +67,13 @@ class Witness_Test extends FlatSpec{
 
     val (we, sr, chars, _, map)  = SLConsBuilder(p).output.head
 
-    val (sstList, sst_int, sst_char) =  SSTBuilder(we, sr, chars, split, 4, true).output
+    val (sstList, sst_int, sst_char, sstSat) =  SSTBuilder(we, sr, chars, split, 4, true, false).output
 
     val path = "C:\\Users\\leaf6\\IdeaProjects\\Automata\\out\\artifacts\\checker\\int.z3"
 
     val z3output = ("z3 -smt2 " + path).!!
 
-    val wb = WitnessBuilder(z3output, map, sst_char.get, sst_int.get, chars, split)
+    val wb = WitnessBuilder(z3output, map, sst_char, sst_int, chars, split)
     println(wb.output)
 
   }
@@ -90,7 +90,7 @@ class Witness_Test extends FlatSpec{
     val (we, sr, chars, _, map)  = SLConsBuilder(p).output.head
     //println(map)
 
-    val (sstList, sst_int, sst_char) = SSTBuilder(we, sr, chars, 0.toChar, 3, true).output
+    val (sstList, sst_int, sst_char, sstSat) = SSTBuilder(we, sr, chars, 0.toChar, 3, true, false).output
     //sst_int.get.printDetail
     //sst_int.get.toParikhImage.foreach(println)
 
@@ -98,7 +98,7 @@ class Witness_Test extends FlatSpec{
 
     val z3output = ("z3 -smt2 " + path).!!
 
-    val wb = WitnessBuilder(z3output, map, sst_char.get, sst_int.get, chars, split)
+    val wb = WitnessBuilder(z3output, map, sst_char, sst_int, chars, split)
     println(wb.output)
   }
 

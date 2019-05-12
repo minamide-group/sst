@@ -45,20 +45,21 @@ case class WitnessBuilder(z3output: String,
   }
 
   def stringWitness(strVLength: Map[Int, Int]): List[String] = {
-    if (sst_Char.f.contains(sst_Char.s0)) {
-      val wholeWitness = sst_Char.process("")._3
-      wholeWitness.mkString.split(split).toList
+    if(sst_Char==null)
+      return List()
+
+    val wholeWitness = if (sst_Char.f.contains(sst_Char.s0)) {
+      sst_Char.process("")._3
     }
     else if (strVLength == null || strVLength.isEmpty) {
       val sourceWitness = search(sst_Char)
-      val wholeWitness = sst_Char.process(sourceWitness)._3
-      wholeWitness.mkString.split(split).toList
+      sst_Char.process(sourceWitness)._3
     }
     else {
       val sourceWitness = search(sst_Int.toMapTransducer, strVLength)
-      val wholeWitness = sst_Char.process(sourceWitness)._3
-      wholeWitness.mkString.split(split).toList
+      sst_Char.process(sourceWitness)._3
     }
+    wholeWitness.mkString.split(split.toString, -1).toList.dropRight(1)
   }
 
   def search[Q, X](sst: SST[Q, Char, Char, X]): String = {
