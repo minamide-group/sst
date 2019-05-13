@@ -4,11 +4,9 @@ A string constraint solver supporting concatenation and transduers.
 
 ## Getting Started
 
-java -jar checker.jar [filename]
-
 ### Prerequisites
 
-Z3 SMT solver: https://github.com/Z3Prover/z3.
+Z3 SMT solver : https://github.com/Z3Prover/z3.
 
 
 ## Running the tests
@@ -20,13 +18,24 @@ Explain how to run the automated tests for this system
 Explain what these tests test and why
 
 ```
-Give an example
+(declare-const x0 String)
+(declare-const x1 String)
+(declare-const x2 String)
+(declare-const i Int)
+
+(assert (= (str.substr x0 3) x1))
+(assert (str.in.re x0 (str.to.re "aba")))
+(assert (= 0 (str.len x1)))
+
+
+(check-sat)
+(get-model)
 ```
 
-### And coding style tests
-
-Explain what these tests test and why
-
 ```
-Give an example
+sat
+(model
+  (define-fun x0 () String
+    "aba")
+)
 ```
