@@ -10,7 +10,7 @@ Z3 SMT solver : https://github.com/Z3Prover/z3.
 
 ## Language
 
-### Declare variables
+### Declare String Variables
 ```
 (declare-const x String)
 ```
@@ -30,66 +30,74 @@ s1 and s2 are either string variables or constant strings (e.g. "abc").
 ```
 str.at x idx
 ```
-x is a string variable, idx is a integer value.
+x is a string variable. 
+idx is an integer.
 
 
 ### String Variable Substring
 ```
 str.substring x begin count
 ```
-
 ```
 str.substring x begin
 ```
-
+x is a string variable. 
+begin and count are integers.
 
 ### String Variable Reverse
 ```
 str.reverse x
 ```
-
+x is a string variable.
 
 ### String Variable Insertion
 ```
 str.insert x idx str
 ```
-
+x is a string variable. 
+idx is an integer. 
+str is a constant string.
 
 ### String Variable Replacement
 ```
 str.replace x str1 str2
 ```
-
 ```
 str.replaceall x str1 str2
 ```
+x is a string variable. 
+str1 and str2 are constant strings.
+
 
 ### String Variable Length
 ```
 str.len x
 ```
+x is a string variable. 
 
 ### String Variable Regular Membership
 ```
 str.in.re x regex
 ```
+x is a string variable. 
 
+regex is a regular expresstion defined as :
 ```
 str.to.re str
 ```
-
+or :
 ```
 re.++ regex1 regex2
 ```
-
+or :
 ```
 re.union regex1 regex2
 ```
 
+or :
 ```
 re.* regex
 ```
-
 
 ## Running the test
 
