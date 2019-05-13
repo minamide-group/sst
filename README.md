@@ -23,7 +23,7 @@ or
 ```
 str.++ s1 s2 ...
 ```
-s1 and s2 are either string variables or constant strings (e.g. "abc").
+**s1** and **s2** are either string variables or constant strings (e.g. "abc").
 
 
 ### String Variable Character At Index
