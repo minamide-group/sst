@@ -1,1 +1,5 @@
-unsat
+sat
+(model
+  (define-fun x2 () String
+    "")
+)

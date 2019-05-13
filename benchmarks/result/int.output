@@ -1,5 +1,5 @@
 sat
 (model
-  (define-fun x0 () String
-    "aaa")
+  (define-fun i () Int
+    1)
 )

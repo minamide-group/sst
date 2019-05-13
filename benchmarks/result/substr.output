@@ -2,4 +2,6 @@ sat
 (model
   (define-fun x0 () String
     "aba")
+  (define-fun x1 () String
+    "")
 )
