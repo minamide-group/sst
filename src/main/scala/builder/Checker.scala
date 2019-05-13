@@ -52,7 +52,7 @@ case class Checker(file : File) {
       }
     }
 
-    val semiLinear = ParikhBuilder(sstInt, sstList, we).output
+    val (semiLinear, trans) = ParikhBuilder(sstInt, sstList, we).output
     val z3Input = Z3InputBuilder(ie.toList, semiLinear, nameToIdx, getModel).output
     val z3Output = executeZ3(z3Input)
 
@@ -61,7 +61,7 @@ case class Checker(file : File) {
     }
     else{
       if(getModel) {
-        val witness = WitnessBuilder(z3Output, nameToIdx, sstChar, sstInt, chars, split).output
+        val witness = WitnessBuilder(z3Output, nameToIdx, sstChar, trans, chars, split).output
         return (true, witness)
       }
       else

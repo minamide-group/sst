@@ -1,13 +1,13 @@
 package builder
 
-import constraint.vars.{SST_State, SST_Var}
+import constraint.vars.{SST_State, SST_Var, TransState}
 import deterministic.boundedcopy.SST
 import formula.str.StrV
 
 case class WitnessBuilder(z3output: String,
                           nameToIdx: Map[StrV, Int],
                           sst_Char: SST[SST_State, Char, Char, SST_Var],
-                          sst_Int: SST[SST_State, Char, Int, SST_Var],
+                          trans: nondeterministic.Transducer[TransState, Char, Map[Int, Int]],
                           chars: Set[Char],
                           split: Char) {
 
@@ -56,7 +56,7 @@ case class WitnessBuilder(z3output: String,
       sst_Char.process(sourceWitness)._3
     }
     else {
-      val sourceWitness = search(sst_Int.toMapTransducer, strVLength)
+      val sourceWitness = search(trans, strVLength)
       sst_Char.process(sourceWitness)._3
     }
     wholeWitness.mkString.split(split.toString, -1).toList.dropRight(1)
