@@ -9,13 +9,26 @@ import org.scalatest.FlatSpec
 //substr
 //substr3
 class Checker_Test extends FlatSpec{
-  val path : String= "C:\\Users\\leaf6\\IdeaProjects\\Automata\\out\\artifacts\\checker\\bug2.smt2"
-  val file = new File(path)
 
-  "checker" should "run" in{
-    val res = Checker(file).output
+  val list = List("at.smt2", "at2.smt2", "bug1.smt2", "bug2.smt2", "empty.smt2",
+  "insert.smt2", "insert2.smt2", "int.smt2", "int2.smt2", "reg.smt2", "reg2.smt2",
+  "reg3.smt2", "substr.smt2", "substr2.smt2", "substr3.smt2")
+  val path : String= "C:\\Users\\leaf6\\IdeaProjects\\Automata\\out\\artifacts\\checker\\"
 
-    println(res._1)
-    println(res._2)
+  "checkAll" should "run" in{
+    list.foreach(i=>{
+      val file = new File(path+i)
+      val res = Checker(file).output
+      print(i)
+      println(res._1)
+      println(res._2)
+    })
+  }
+
+  "checkOne" should "run" in{
+     val file = new File(path+"bug3.smt2")
+     val res = Checker(file).output
+     println(res._1)
+     println(res._2)
   }
 }
