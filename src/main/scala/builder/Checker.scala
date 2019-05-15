@@ -81,8 +81,11 @@ case class Checker(file : File) {
     pw.write(input)
     pw.close
 
-    val output = ("z3 -smt2 " + path).!!
-
+    val output : String = try{
+      ("z3 -smt2 " + path).!!
+    }catch {
+      case _ : Throwable => "unsat"
+    }
     file.delete()
 
     output
