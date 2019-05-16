@@ -118,6 +118,10 @@ Suppose we have a file substr.smt2 with following content:
 
 Execute:
 ```
+checker substr.smt2
+```
+or
+```
 java -jar checker.jar substr.smt2
 ```
 
