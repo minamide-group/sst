@@ -77,14 +77,14 @@ case class SST[Q, Σ, Γ, X](
 
   def trim: SST[Q, Σ, Γ, X] = trimStates.trimVars
 
-  private def trimStates: SST[Q, Σ, Γ, X] = {
+  def trimStates: SST[Q, Σ, Γ, X] = {
     val res0 = toDFA.trim
     SST(res0.states, res0.s0, vars, res0.δ, η.filter(r => res0.δ.contains(r._1)), f.filter(r => res0.states(r._1)))
   }
 
   def toDFA = DFA(states, s0, δ, f.keySet)
 
-  private def trimVars: SST[Q, Σ, Γ, X] = {
+  def trimVars: SST[Q, Σ, Γ, X] = {
     //    def star[X](next: X => Set[X])(v1: Set[X]): Set[X] = {
     //      val v2 = v1.flatMap(next) ++ v1
     //      if (v1 == v2) v1
@@ -211,11 +211,7 @@ case class SST[Q, Σ, Γ, X](
     println("--------start----------")
     println("states num: " + states.size)
     println("----------")
-    println("init state: " + s0)
-    println("----------")
     println("vars num: " + vars.size)
-    println("----------")
-    println("output function length: " + f.map(x => x._2.size))
     println("----------")
     println("delta size: " + δ.size)
     println("---------end-----------")

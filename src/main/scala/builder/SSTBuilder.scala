@@ -4,7 +4,6 @@ import constraint.atomicSL.{AtomicSLCons, Concatenation, SSTConstraint, Transduc
 import constraint.regular.RegCons
 import constraint.vars.{FAState, SST_State, SST_Var, TransState}
 import deterministic.boundedcopy.{Composition, SST}
-import deterministic.factory.SSTFactory
 import deterministic.{DFA, Transducer}
 
 //from constraints to SSTs, and compose SST
@@ -34,8 +33,6 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
       }
     }
   }
-
-  def getTimeSecond(start : Long, end : Long) : String = ((end-start)*1.0/1000).toString
 
   def getStem(num: Int, name: String): MySST[Σ] = {
     //return a sst with |vars| = num, and |states| = num + 1
@@ -153,7 +150,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
       }
       else{
         val sst_char = compose(sst0, last_char)
-        ( null, sst_char, sst_char.states.nonEmpty)
+        (null, sst_char, sst_char.states.nonEmpty)
       }
     }
   }
@@ -338,5 +335,6 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
   }
 
   def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = Composition.compose(addDefault(sst1.trim), addDefault(sst2.trim)).trim.rename("r0")
+
 
 }

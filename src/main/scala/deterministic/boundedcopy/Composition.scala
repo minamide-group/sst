@@ -1,41 +1,7 @@
 package deterministic.boundedcopy
 
-object Update {
-  def composite[X, Γ](vars: Set[X], m1: Map[X, List[Either[X, Γ]]], m2: Map[X, List[Either[X, Γ]]]): Map[X, List[Either[X, Γ]]] = {
-    vars.map(x => (x, hatHom(m1, m2(x)))).toMap
-  }
-
-  def hatHom[X, A](m: Map[X, List[Either[X, A]]], list: List[Either[X, A]]): List[Either[X, A]] = {
-    list.flatMap(xa => xa match {
-      case Left(x) => m(x)
-      case Right(a) => List(Right(a))
-    })
-  }
-
-  def identity[X, A](vars: Set[X]): Map[X, List[Either[X, A]]] = {
-    vars.map(x => (x, List(Left(x)))).toMap
-  }
-
-  def identityShuffle[X](vars: Set[X]): Map[X, List[X]] = {
-    vars.map(x => (x, List(x))).toMap
-  }
-}
-
-case class MonoidSST[Q, A, B, X, Y](
-                                     sst: SST[Q, A, Map[Y, List[Either[Y, B]]], X],
-                                     vars2: Set[Y],
-                                     final2: Map[Q, List[Either[Y, B]]]) {
-}
-
 object Composition {
-  /**
-    * lookup all reachable states from give initial states
-    *
-    * @param initialStates initial states
-    * @param alphabet      alphabet
-    * @param transition    transition function
-    * @return set of reachable states
-    */
+
   def search[Q, A](initialStates: List[Q], alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
     def rec(queue: List[Q], openSet: Set[Q]): Set[Q] = {
       queue match {
@@ -50,29 +16,39 @@ object Composition {
     rec(initialStates, initialStates.toSet)
   }
 
-  /**
-    * search with only one initial state
-    */
   def search[Q, A](initialState: Q, alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
     search(List(initialState), alphabet, transition)
   }
 
-  /**
-    * compose two SSTs
-    *
-    * @param sst1 former
-    * @param sst2 latter
-    */
+  def search[Q, A](initialState: Q, transition : Map[(Q, A), Q]): Set[Q] = {
+    def rec(queue: List[Q], openSet: Set[Q]): Set[Q] = {
+      queue match {
+        case (q :: qs) => {
+          val next: Set[Q] = transition.filter(r=> r._1._1==q && !openSet(r._2)).map(_._2).toSet
+          rec(qs ::: next.toList, openSet ++ next)
+        }
+        case Nil => openSet
+      }
+    }
+
+    rec(List(initialState), Set(initialState))
+  }
+
   def compose[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]) = {
     val boundness = calcBoundedness(sst2)
-    convertFromMonoidSST(boundness, composeToMonoidSST(sst1, sst2))
+
+    val msst0 = composeToMonoidSST(sst1, sst2)
+    val sst = msst0.sst.trimVars
+    val vars2 = msst0.vars2
+    val final2 = msst0.final2
+    val msst = MonoidSST(sst, vars2, final2)
+    convertFromMonoidSST(boundness, msst)
   }
 
   /**
     * first step of composition.
     */
-  def composeToMonoidSST[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]):
-  MonoidSST[(Q1, Map[(Q2, X), Q2]), A, C, (Q2, X), Y] = {
+  def composeToMonoidSST[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]): MonoidSST[(Q1, Map[(Q2, X), Q2]), A, C, (Q2, X), Y] = {
     type Trans = Map[(Q2, X), Q2]
     type Update1 = Map[X, List[Either[X, B]]]
     type Update2 = Map[Y, List[Either[Y, C]]]
@@ -100,7 +76,7 @@ object Composition {
 
     def innerEtaHat(f: Trans)(q2: Q2, xbs: List[Either[X, B]]): List[Either[(Q2, X), Update2]] = {
 
-      def _innerEtaHat(f : Trans, q2: Q2, xbs: List[Either[X, B]], res : List[Either[(Q2, X), Update2]]) : List[Either[(Q2, X), Update2]] ={
+      def _innerEtaHat(f: Trans, q2: Q2, xbs: List[Either[X, B]], res: List[Either[(Q2, X), Update2]]): List[Either[(Q2, X), Update2]] = {
         xbs match {
           case (xb :: xbs) => _innerEtaHat(f, innerDelta(f)(q2, xb), xbs, res ++ innerEta(q2, xb))
           case _ => res
@@ -247,7 +223,6 @@ object Composition {
       synthesize(vars2, b(x), (y, k) => List(Left((x, y, k))))
     }
 
-
     def duplicateRight(u: List[Either[Y, B]]): List[Either[Y, Either[Var, B]]] = {
       u.map(yb => yb match {
         case Left(y) => Left(y)
@@ -292,6 +267,7 @@ object Composition {
 
     val alphabet: Set[A] = guessAlphabet(msst.sst)
     val initial = (msst.sst.s0, (for (x <- msst.sst.vars) yield (x, Update.identityShuffle(msst.vars2))).toMap)
+
     val states = search(initial, alphabet, (qf: (Q, Bone), a: A) => delta(qf._1, qf._2, a))
 
     val vars = for (x <- msst.sst.vars; y <- msst.vars2; k <- 0 to boundedness) yield (x, y, k)

@@ -136,3 +136,8 @@ sat
 )
 
 ```
+
+Specify ASCII:
+```
+checker substr.smt2 -ascii 256
+```

@@ -10,24 +10,25 @@ object Main extends App {
   }
   else {
     val filename = args(0)
+    val options = toOptions(args.drop(1)).withDefaultValue(List("0"))
 
     val file = new File(filename)
 
     if (file.exists()) {
-      processFile(file)
+      processFile(file, options)
     }
     else {
       val path = System.getProperty("user.dir") + "\\.." + filename
       val file = new File(path)
       if (file.exists())
-        processFile(file)
+        processFile(file, options)
       else
         println("file not found : " + filename)
     }
   }
 
-  def processFile(file: File): Unit = {
-    val (res, msg) = Checker(file).output
+  def processFile(file: File, options : Map[String, List[String]]): Unit = {
+    val (res, msg) = Checker(file, options("-ascii").head.toInt).output
 
     if(res)
       println("sat")
@@ -36,5 +37,20 @@ object Main extends App {
 
     if(msg.nonEmpty)
       println(msg)
+  }
+
+  def toOptions(args : Array[String]) : Map[String, List[String]] = {
+    def loop(args : List[String], temp1 : String, temp2 : List[String], res : Map[String, List[String]]) : Map[String, List[String]] = {
+      args match {
+        case Nil => res + (temp1->temp2)
+        case x :: xs if (x.startsWith("-")) => loop(xs, x, List(), res + (temp1->temp2))
+        case x :: xs => loop(xs, temp1, temp2:::List(x), res)
+      }
+    }
+
+    if(args.isEmpty)
+      Map()
+    else
+      loop(args.drop(1).toList, args(0), List(), Map())
   }
 }

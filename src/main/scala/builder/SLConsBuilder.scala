@@ -73,7 +73,6 @@ case class SLConsBuilder(formula: ReturnBoolean) {
     val df = DFAFactory(chars)
     val sf = SSTFactory(chars)
     val we_defined_strVs = we.map(t=>t.left).toSet
-    val sr_defined_strVs = sr.map(t=>t.left).toSet
 
     def output: Option[outputType] = {
       val strVListOption = checkSL(we)

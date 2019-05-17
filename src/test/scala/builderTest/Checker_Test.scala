@@ -18,16 +18,17 @@ class Checker_Test extends FlatSpec{
   "checkAll" should "run" in{
     list.foreach(i=>{
       val file = new File(path+i)
-      val res = Checker(file).output
-      print(i)
+      val res = Checker(file, 0).output
+      println(i)
       println(res._1)
       println(res._2)
+      println()
     })
   }
 
   "checkOne" should "run" in{
      val file = new File(path+"empty.smt2")
-     val res = Checker(file).output
+     val res = Checker(file, 256).output
      println(res._1)
      println(res._2)
   }
