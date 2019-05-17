@@ -85,24 +85,6 @@ case class SST[Q, Σ, Γ, X](
   def toDFA = DFA(states, s0, δ, f.keySet)
 
   def trimVars: SST[Q, Σ, Γ, X] = {
-    //    def star[X](next: X => Set[X])(v1: Set[X]): Set[X] = {
-    //      val v2 = v1.flatMap(next) ++ v1
-    //      if (v1 == v2) v1
-    //      else star(next)(v2)
-    //    }
-
-    //    def usedVars: Set[X] = {
-    //      def app(xs: Map[X, Set[X]], ys: Map[X, Set[X]]): Map[X, Set[X]] = vars.map(v => (v, xs.getOrElse(v, Set()) ++ ys.getOrElse(v, Set()))).toMap
-    //
-    //      val labelx: List[Map[X, Set[X]]] = η.toList.map(_._2.map { case (x, y) => (x, y.collect { case Left(x) => x }.toSet) })
-    //      val label: Map[X, Set[X]] = labelx.foldLeft(Map[X, Set[X]]()) { (acc, i) => app(acc, i) }
-    //      val revlabel: Map[X, Set[X]] = vars.map { x => (x, vars.filter { y =>label.withDefaultValue(Set())(y)(x)}) }.toMap
-    //      val use: Set[X] = f.flatMap(_._2).collect { case Left(x) => x }.toSet
-    //      val nonempty: Set[X] = η.toList.flatMap(_._2).filter { r => r._2.exists(_.isRight) }.map(_._1).toSet
-    //
-    //      star(label)(use).intersect(star(revlabel)(nonempty))
-    //    }
-
     val newVars = usedVars.intersect(nonEmptyVars)
 
     val newEta = η.map(
@@ -214,6 +196,8 @@ case class SST[Q, Σ, Γ, X](
     println("vars num: " + vars.size)
     println("----------")
     println("delta size: " + δ.size)
+    println("----------")
+    println("eta size: " + η.size)
     println("---------end-----------")
   }
 

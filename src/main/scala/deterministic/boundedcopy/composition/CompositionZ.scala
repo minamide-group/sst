@@ -1,6 +1,8 @@
-package deterministic.boundedcopy
+package deterministic.boundedcopy.composition
 
-object Composition {
+import deterministic.boundedcopy.SST
+
+object CompositionZ {
 
   def search[Q, A](initialStates: List[Q], alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
     def rec(queue: List[Q], openSet: Set[Q]): Set[Q] = {
@@ -20,29 +22,11 @@ object Composition {
     search(List(initialState), alphabet, transition)
   }
 
-  def search[Q, A](initialState: Q, transition : Map[(Q, A), Q]): Set[Q] = {
-    def rec(queue: List[Q], openSet: Set[Q]): Set[Q] = {
-      queue match {
-        case (q :: qs) => {
-          val next: Set[Q] = transition.filter(r=> r._1._1==q && !openSet(r._2)).map(_._2).toSet
-          rec(qs ::: next.toList, openSet ++ next)
-        }
-        case Nil => openSet
-      }
-    }
-
-    rec(List(initialState), Set(initialState))
-  }
-
   def compose[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]) = {
     val boundness = calcBoundedness(sst2)
-
     val msst0 = composeToMonoidSST(sst1, sst2)
-    val sst = msst0.sst.trimVars
-    val vars2 = msst0.vars2
-    val final2 = msst0.final2
-    val msst = MonoidSST(sst, vars2, final2)
-    convertFromMonoidSST(boundness, msst)
+    val sst = msst0.sst.trim
+    convertFromMonoidSST(boundness, MonoidSST(sst, msst0.vars2, msst0.final2))
   }
 
   /**
@@ -268,13 +252,34 @@ object Composition {
     val alphabet: Set[A] = guessAlphabet(msst.sst)
     val initial = (msst.sst.s0, (for (x <- msst.sst.vars) yield (x, Update.identityShuffle(msst.vars2))).toMap)
 
-    val states = search(initial, alphabet, (qf: (Q, Bone), a: A) => delta(qf._1, qf._2, a))
+    def searchStates: Set[(Q, Bone)] = {
+      def rec(queue: List[(Q, Bone)], openSet: Set[(Q, Bone)]): Set[(Q, Bone)] = {
+        queue match {
+          case (q :: qs) => {
+            val next = alphabet.collect{
+              case a if (msst.sst.δ.contains((q._1, a)))=> (msst.sst.δ(q._1, a), largeDeltaPrime(q._2, msst.sst.η(q._1, a)))
+            }.filterNot(openSet(_))
+            rec(qs ::: next.toList, openSet ++ next)
+          }
+          case _ => openSet
+        }
+      }
+      rec(List(initial), Set(initial))
+    }
 
+    val states : Set[(Q, Bone)] = searchStates
     val vars = for (x <- msst.sst.vars; y <- msst.vars2; k <- 0 to boundedness) yield (x, y, k)
-    val deltaMap = (for ((q, f) <- states; a <- alphabet) yield (((q, f), a), delta(q, f, a))).toMap
-    val etaMap = (for ((q, f) <- states; a <- alphabet) yield (((q, f), a), eta(q, f, a))).toMap
+    val deltaMap = states.flatMap(q=>
+      msst.sst.δ.filter(t=>t._1._1 == q._1).map(t=>
+        ((t._1._1, q._2), t._1._2) -> delta(t._1._1, q._2, t._1._2)
+      )
+    ).toMap
+    val etaMap = states.flatMap(q=>
+      msst.sst.δ.filter(t=>t._1._1 == q._1).map(t=>
+        ((t._1._1, q._2), t._1._2) -> eta(t._1._1, q._2, t._1._2)
+      )
+    ).toMap
     val f = (for ((q, f) <- states; u <- final0(q, f)) yield ((q, f), u)).toMap
-
     SST(states, initial, vars, deltaMap, etaMap, f)
   }
 

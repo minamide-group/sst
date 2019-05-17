@@ -10,7 +10,7 @@ import formula.str.StrV
 import scala.io.Source
 import scala.sys.process._
 
-case class Checker(file : File, asciiSize : Int) {
+case class Checker(file : File, options : Map[String, List[String]]) {
 
   type Clause = (List[AtomicSLCons], Set[RegCons[Char]], Set[Char], Set[IntegerEquation], Map[StrV, Int])
   val lines = Source.fromFile(file.getPath).getLines().toList
@@ -36,12 +36,20 @@ case class Checker(file : File, asciiSize : Int) {
 
   def check(clause: Clause) : (Boolean, String) = {
     val (we, sr, chars0, ie, nameToIdx) = clause
+    val asciiSize = if(options.contains("-ascii")) options("-ascii").head.toInt else 0
     val ascii = Math.min(256, asciiSize)
     val chars = chars0 ++ List.range(0, ascii).map(_.toChar).toSet
 
     val split = 655.toChar
     val getLength = ie.flatMap(t=>t.strVs).intersect(nameToIdx.keySet).nonEmpty
     val (sstList, sstInt, sstChar, sstSat) = SSTBuilder(we, sr, chars, split, nameToIdx.size, getModel, getLength).output
+
+    if(options.contains("-sstInfo")){
+      if(sstInt!=null)
+        sstInt.print
+      else if(sstChar!=null)
+        sstChar.print
+    }
 
     if(!sstSat)
       return (false, "")

@@ -28,7 +28,7 @@ object Main extends App {
   }
 
   def processFile(file: File, options : Map[String, List[String]]): Unit = {
-    val (res, msg) = Checker(file, options("-ascii").head.toInt).output
+    val (res, msg) = Checker(file, options).output
 
     if(res)
       println("sat")

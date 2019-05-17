@@ -32,4 +32,12 @@ class sstTest extends FlatSpec{
 
     trans.print
   }
+
+  "t" should "" in{
+    val l = List(1,2,3,4,5)
+    val l2 = l.collect{
+      case x if x%2==0 => x
+    }
+    println(l2)
+  }
 }

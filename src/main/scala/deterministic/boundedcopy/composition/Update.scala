@@ -1,4 +1,4 @@
-package deterministic.boundedcopy
+package deterministic.boundedcopy.composition
 
 object Update {
   def composite[X, Γ](vars: Set[X], m1: Map[X, List[Either[X, Γ]]], m2: Map[X, List[Either[X, Γ]]]): Map[X, List[Either[X, Γ]]] = {

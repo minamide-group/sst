@@ -3,7 +3,8 @@ package builder
 import constraint.atomicSL.{AtomicSLCons, Concatenation, SSTConstraint, TransducerConstraint}
 import constraint.regular.RegCons
 import constraint.vars.{FAState, SST_State, SST_Var, TransState}
-import deterministic.boundedcopy.{Composition, SST}
+import deterministic.boundedcopy.SST
+import deterministic.boundedcopy.composition.CompositionZ
 import deterministic.{DFA, Transducer}
 
 //from constraints to SSTs, and compose SST
@@ -150,7 +151,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
       }
       else{
         val sst_char = compose(sst0, last_char)
-        (null, sst_char, sst_char.states.nonEmpty)
+        ( null, sst_char, sst_char.states.nonEmpty)
       }
     }
   }
@@ -334,7 +335,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     Transducer(trans.states + sink, trans.s0, trans.δ.withDefaultValue(sink), trans.η, trans.f)
   }
 
-  def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = Composition.compose(addDefault(sst1.trim), addDefault(sst2.trim)).trim.rename("r0")
+  def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = CompositionZ.compose(addDefault(sst1.trim), addDefault(sst2.trim)).trim.rename("r0")
 
 
 }

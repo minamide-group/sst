@@ -18,7 +18,7 @@ class Checker_Test extends FlatSpec{
   "checkAll" should "run" in{
     list.foreach(i=>{
       val file = new File(path+i)
-      val res = Checker(file, 0).output
+      val res = Checker(file, Map()).output
       println(i)
       println(res._1)
       println(res._2)
@@ -28,7 +28,7 @@ class Checker_Test extends FlatSpec{
 
   "checkOne" should "run" in{
      val file = new File(path+"empty.smt2")
-     val res = Checker(file, 256).output
+     val res = Checker(file, Map("-ascii"->List("256"), "-sstInfo"->List())).output
      println(res._1)
      println(res._2)
   }

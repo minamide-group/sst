@@ -141,3 +141,27 @@ Specify ASCII:
 ```
 checker substr.smt2 -ascii 256
 ```
+
+Print composed SST:
+```
+checker substr.smt2 -sstInfo
+```
+```
+--------start----------
+states num: 5
+----------
+vars num: 1
+----------
+delta size: 4
+----------
+eta size: 4
+---------end-----------
+sat
+(model
+  (define-fun x0 () String
+    "aba")
+  (define-fun x1 () String
+    "")
+)
+```
+
