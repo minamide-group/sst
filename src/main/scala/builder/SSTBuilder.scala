@@ -336,6 +336,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
   }
 
   def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = CompositionZ.compose(addDefault(sst1.trim), addDefault(sst2.trim)).trim.rename("r0")
+  //def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = CompositionZ.compose(sst1.trim, sst2.trim).trim.rename("r0")
 
 
 }

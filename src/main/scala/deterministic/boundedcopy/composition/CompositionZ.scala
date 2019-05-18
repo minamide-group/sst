@@ -249,21 +249,19 @@ object CompositionZ {
       })
     }
 
-    val alphabet: Set[A] = guessAlphabet(msst.sst)
     val initial = (msst.sst.s0, (for (x <- msst.sst.vars) yield (x, Update.identityShuffle(msst.vars2))).toMap)
 
     def searchStates: Set[(Q, Bone)] = {
       def rec(queue: List[(Q, Bone)], openSet: Set[(Q, Bone)]): Set[(Q, Bone)] = {
         queue match {
           case (q :: qs) => {
-            val next = alphabet.collect{
-              case a if (msst.sst.δ.contains((q._1, a)))=> (msst.sst.δ(q._1, a), largeDeltaPrime(q._2, msst.sst.η(q._1, a)))
-            }.filterNot(openSet(_))
+            val next = msst.sst.δ.filter(r=>r._1._1 == q._1).map(r=> (r._2, largeDeltaPrime(q._2, msst.sst.η(q._1, r._1._2)))).filterNot(openSet(_))
             rec(qs ::: next.toList, openSet ++ next)
           }
           case _ => openSet
         }
       }
+
       rec(List(initial), Set(initial))
     }
 
@@ -296,13 +294,23 @@ object CompositionZ {
       0
     })).toMap
     val initials = (for (q <- sst.states) yield (q, one)).toList
-
     def trans(qm: (Q, Map[(X, X), Int]), a: A): (Q, Map[(X, X), Int]) = {
       val (q0, m0) = qm
       (sst.δ(q0, a), (for ((x, v) <- sst.η(q0, a); y <- sst.vars) yield ((x, y), v.collect { case Left(z) => m0(z, y) }.sum)))
     }
-
-    val reachables = search(initials, guessAlphabet(sst), trans(_, _))
+    def searchStates: Set[(Q, Map[(X,X), Int])] = {
+      def rec(queue: List[(Q, Map[(X,X), Int])], openSet: Set[(Q, Map[(X,X), Int])]): Set[(Q, Map[(X,X), Int])] = {
+        queue match {
+          case (q :: qs) => {
+            val next = sst.δ.filter(r=>r._1._1 == q._1).map(r=> (trans(q, r._1._2))).filterNot(openSet(_))
+            rec(qs ::: next.toList, openSet ++ next)
+          }
+          case _ => openSet
+        }
+      }
+      rec(initials, initials.toSet)
+    }
+    val reachables = searchStates
     reachables.toSeq.map { case (_, m) => sst.vars.toSeq.map(y => sst.vars.toSeq.map(x => m(x, y)).sum).max }.max
   }
 }
