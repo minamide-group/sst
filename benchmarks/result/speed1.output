@@ -1,0 +1,7 @@
+sat
+(model
+  (define-fun w () String
+    "aaabdshzxcbnmqwerrt")
+  (define-fun x () String
+    "aaabdshzxcbnmqwerrt")
+)

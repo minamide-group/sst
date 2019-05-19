@@ -1,0 +1,13 @@
+sat
+(model
+  (define-fun x0 () String
+    "aabc")
+  (define-fun x1 () String
+    "ccbc")
+  (define-fun x2 () String
+    "ccdc")
+  (define-fun x3 () String
+    "aada")
+  (define-fun i () Int
+    4)
+)

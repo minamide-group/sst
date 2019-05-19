@@ -1,0 +1,37 @@
+sat
+(model
+  (define-fun x0 () String
+    "aaba")
+  (define-fun x1 () String
+    "aaca")
+  (define-fun x2 () String
+    "aada")
+  (define-fun x3 () String
+    "aaea")
+  (define-fun x4 () String
+    "aafa")
+  (define-fun x5 () String
+    "aaga")
+  (define-fun x6 () String
+    "aaha")
+  (define-fun x7 () String
+    "aaia")
+  (define-fun x8 () String
+    "aaja")
+  (define-fun x9 () String
+    "aaka")
+  (define-fun x10 () String
+    "aala")
+  (define-fun x11 () String
+    "aama")
+  (define-fun x12 () String
+    "aana")
+  (define-fun x13 () String
+    "aaoa")
+  (define-fun x14 () String
+    "aapa")
+  (define-fun x15 () String
+    "aaqa")
+  (define-fun x16 () String
+    "aara")
+)

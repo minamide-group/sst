@@ -4,7 +4,7 @@ import deterministic.boundedcopy.SST
 
 object CompositionZ {
 
-  def search[Q, A](initialStates: List[Q], alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
+  private def search[Q, A](initialStates: List[Q], alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
     def rec(queue: List[Q], openSet: Set[Q]): Set[Q] = {
       queue match {
         case (q :: qs) => {
@@ -18,7 +18,7 @@ object CompositionZ {
     rec(initialStates, initialStates.toSet)
   }
 
-  def search[Q, A](initialState: Q, alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
+  private def search[Q, A](initialState: Q, alphabet: Set[A], transition: (Q, A) => Q): Set[Q] = {
     search(List(initialState), alphabet, transition)
   }
 
@@ -93,6 +93,7 @@ object CompositionZ {
     // there is no set of alphabet, we guess it...
     val alphabet: Set[A] = sst1.δ.keySet.map(_._2)
     val initial = (sst1.s0, (for (q2 <- sst2.states; x <- sst1.vars) yield ((q2, x), q2)).toMap)
+
     val states = search(initial, alphabet, (qf: (Q1, Trans), a: A) => delta(qf._1, qf._2, a))
     val vars = for (q2 <- sst2.states; x <- sst1.vars) yield (q2, x)
     val deltaMap = (for ((q, f) <- states; a <- alphabet) yield (((q, f), a), delta(q, f, a))).toMap

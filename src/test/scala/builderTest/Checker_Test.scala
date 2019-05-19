@@ -6,13 +6,11 @@ import java.io.File
 import builder.Checker
 import org.scalatest.FlatSpec
 
-//substr
-//substr3
 class Checker_Test extends FlatSpec{
 
-  val list = List("at.smt2", "at2.smt2", "bug1.smt2", "bug2.smt2", "empty.smt2",
+  val list = List("at.smt2", "at2.smt2", "bug1.smt2", "bug2.smt2",
   "insert.smt2", "insert2.smt2", "int.smt2", "int2.smt2", "reg.smt2", "reg2.smt2",
-  "reg3.smt2", "substr.smt2", "substr2.smt2", "substr3.smt2")
+  "reg3.smt2", "substr.smt2", "substr2.smt2", "substr3.smt2", "speed1.smt2", "speed2.smt2")
   val path : String= "C:\\Users\\leaf6\\IdeaProjects\\Automata\\out\\artifacts\\checker\\"
 
   "checkAll" should "run" in{
@@ -27,8 +25,8 @@ class Checker_Test extends FlatSpec{
   }
 
   "checkOne" should "run" in{
-     val file = new File(path+"empty.smt2")
-     val res = Checker(file, Map("-ascii"->List("256"))).output
+     val file = new File(path+"speed2.smt2")
+     val res = Checker(file, Map("-ascii"->List("0"), "-sstInfo"->List())).output
      println(res._1)
      println(res._2)
   }

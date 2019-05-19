@@ -3,7 +3,8 @@
 (declare-const x2 String)
 (declare-const i Int)
 
-(assert (> 0 (str.len x2)))
+(assert (= 0 (str.len x2)))
 
 
 (check-sat)
+(get-model)

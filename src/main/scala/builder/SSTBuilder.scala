@@ -4,7 +4,7 @@ import constraint.atomicSL.{AtomicSLCons, Concatenation, SSTConstraint, Transduc
 import constraint.regular.RegCons
 import constraint.vars.{FAState, SST_State, SST_Var, TransState}
 import deterministic.boundedcopy.SST
-import deterministic.boundedcopy.composition.CompositionZ
+import deterministic.boundedcopy.composition.{CompositionZ, CompositionZZ}
 import deterministic.{DFA, Transducer}
 
 //from constraints to SSTs, and compose SST
@@ -108,7 +108,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
             }
             case s: SSTConstraint[Σ] => {
               val regCons = varDFA.filter(p => p._1 < leftId && p._1 != s.source)
-              val sst = if (varDFA.contains(s.source)) compose(addDefault(dfaToSST(varDFA(s.source))), addDefault(s.sst)) else s.sst
+              val sst = if (varDFA.contains(s.source)) compose(dfaToSST(varDFA(s.source)), s.sst) else s.sst
               if(sst.states.isEmpty)
                 None
               else
@@ -335,8 +335,14 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     Transducer(trans.states + sink, trans.s0, trans.δ.withDefaultValue(sink), trans.η, trans.f)
   }
 
-  def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = CompositionZ.compose(addDefault(sst1.trim), addDefault(sst2.trim)).trim.rename("r0")
-  //def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = CompositionZ.compose(sst1.trim, sst2.trim).trim.rename("r0")
+  //def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = Composition.compose(addDefault(sst1.trim), addDefault(sst2.trim)).trim.rename("r0")
+
+  //CompositionZ : remove useless states and variables of MSST.
+  //def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = CompositionZ.compose(addDefault(sst1.trim), addDefault(sst2.trim)).trim.rename("r0")
+
+  //CompositionZZ : avoid the generation of a number of useless states and transitions of MSST
+  //                and remove useless variables of MSST
+  def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = CompositionZZ.compose(sst1.trim, sst2.trim).trim.rename("r0")
 
 
 }
