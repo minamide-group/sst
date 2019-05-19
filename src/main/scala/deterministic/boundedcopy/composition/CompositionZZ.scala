@@ -312,6 +312,9 @@ object CompositionZZ {
     */
   def calcBoundedness[Q, A, B, X](sst: SST[Q, A, B, X]): Int = {
     // ((x, y) -> n) means var x used y for n times
+    if(sst.vars.isEmpty)
+      return 0
+
     val one = (for (x <- sst.vars; y <- sst.vars) yield ((x, y), if (x == y) {
       1
     } else {
