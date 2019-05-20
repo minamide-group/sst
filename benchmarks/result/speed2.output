@@ -1,37 +1,35 @@
 sat
 (model
   (define-fun x0 () String
-    "aaba")
+    "aabc")
   (define-fun x1 () String
-    "aaca")
+    "ccbc")
   (define-fun x2 () String
-    "aada")
+    "ccdc")
   (define-fun x3 () String
-    "aaea")
+    "aada")
   (define-fun x4 () String
-    "aafa")
+    "aaea")
   (define-fun x5 () String
-    "aaga")
+    "aafa")
   (define-fun x6 () String
-    "aaha")
+    "aaga")
   (define-fun x7 () String
-    "aaia")
+    "aaha")
   (define-fun x8 () String
-    "aaja")
+    "aaia")
   (define-fun x9 () String
+    "aaja")
+  (define-fun xa () String
     "aaka")
-  (define-fun x10 () String
+  (define-fun xb () String
     "aala")
-  (define-fun x11 () String
+  (define-fun xc () String
     "aama")
-  (define-fun x12 () String
+  (define-fun xd () String
     "aana")
-  (define-fun x13 () String
+  (define-fun xe () String
     "aaoa")
-  (define-fun x14 () String
-    "aapa")
-  (define-fun x15 () String
-    "aaqa")
-  (define-fun x16 () String
-    "aara")
+  (define-fun i () Int
+    4)
 )
