@@ -31,9 +31,18 @@ case class DFAFactory(charSet : Set[Char]) {
       conNFA(unitNFA(str.charAt(0)), unitNFA(str.substring(1)))
   }
 
+  private def unitNFA(chars : Set[Char]) : NFA[S, C] = {
+    if(chars.isEmpty)
+      emptyNFA()
+    else if(chars.size==1)
+      unitNFA(chars.head)
+    else
+      altNFA(unitNFA(chars.head), unitNFA(chars.tail))
+  }
+
   private def emptyNFA(): NFA[S, C] = {
     val q0 = new S
-    NFA(Set(q0), q0, Map[(S, C), Set[S]](), Set())
+    NFA(Set(q0), q0, Map(), Set())
   }
 
   private def epsilonNFA(): NFA[S, C] = {
@@ -136,6 +145,7 @@ case class DFAFactory(charSet : Set[Char]) {
   def RegToNFA(formula: ReturnRe) : NFA[S, C] = {
     formula match {
       case a : StrToRe => unitNFA(a.str)
+      case a : ReRange => unitNFA(a.chars)
       case a : ReUnion => altNFA(RegToNFA(a.re1), RegToNFA(a.re2))
       case a : ReConcat=> conNFA(RegToNFA(a.re1), RegToNFA(a.re2))
       case a : ReStar  => starNFA(RegToNFA(a.re))

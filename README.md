@@ -81,22 +81,24 @@ str.in.re x regex
 ```
 **x** is a string variable. 
 
-**regex** is a regular expresstion defined as :
+**regex** is a regular expresstion defined by following operations :
 ```
 str.to.re str
 ```
-or :
 ```
 re.++ regex1 regex2
 ```
-or :
 ```
 re.union regex1 regex2
 ```
-
-or :
 ```
 re.* regex
+```
+```
+re.+ regex
+```
+```
+re.range s t
 ```
 
 ## Running the test
