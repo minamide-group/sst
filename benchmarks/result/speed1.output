@@ -1,7 +1,7 @@
 sat
 (model
   (define-fun w () String
-    "aaabdshzxcbnmqwerrt")
+    "qwertyuiasdfSDFZXC123456778")
   (define-fun x () String
-    "aaabdshzxcbnmqwerrt")
+    "qwertyuiasdfSDFZXC123456778")
 )
