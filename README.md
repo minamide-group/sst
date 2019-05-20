@@ -141,8 +141,10 @@ sat
 
 Specify ASCII:
 ```
-checker substr.smt2 -ascii 256
+checker substr.smt2 -ascii i
 ```
+**i** is an integer ranging from 0 to 256. The solver will simply
+add the characters from 0 to **i-1** to the alphabet.
 
 Print composed SST:
 ```
