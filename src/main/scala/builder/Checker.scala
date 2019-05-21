@@ -39,7 +39,6 @@ case class Checker(file : File, options : Map[String, List[String]]) {
     val asciiSize = if(options.contains("-ascii")) options("-ascii").head.toInt else 0
     val ascii = Math.min(256, asciiSize)
     val chars = chars0 ++ List.range(0, ascii).map(_.toChar).toSet
-
     val split = 655.toChar
     val getLength = ie.flatMap(t=>t.strVs).intersect(nameToIdx.keySet).nonEmpty
     val (sstList, sstInt, sstChar, sstSat) = SSTBuilder(we, sr, chars, split, nameToIdx.size, getModel, getLength).output

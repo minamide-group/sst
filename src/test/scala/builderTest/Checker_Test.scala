@@ -25,8 +25,8 @@ class Checker_Test extends FlatSpec{
   }
 
   "checkOne" should "run" in{
-     val file = new File(path+"range.smt2")
-     val res = Checker(file, Map("-ascii"->List("0"), "-sstInfo"->List())).output
+     val file = new File(path+"bug5.smt2")
+     val res = Checker(file, Map("-ascii"->List("256"))).output
      println(res._1)
      println(res._2)
   }

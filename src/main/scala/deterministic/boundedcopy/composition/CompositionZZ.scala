@@ -252,12 +252,14 @@ object CompositionZZ {
     }
 
     def largeDeltaPrime(bone: Bone, m: UpdateM): Bone = {
-      (for (x <- msst.sst.vars) yield (x, resolveShuffle(iotaHom(bone)(m(x))))).toMap
+      m.map(t=> t._1-> resolveShuffle(iotaHom(bone)(t._2)))
     }
 
     def largeEtaPrime(bone: Bone, m: UpdateM) = {
-      (for (x <- msst.sst.vars; y <- msst.vars2; k <- 0 to boundedness)
-        yield ((x, y, k), resolveStore(vars2, iotaHom(bone)(m(x)))(y, k))).toMap
+      val t = for (x <- msst.sst.vars; y <- msst.vars2; k <- 0 to boundedness) yield (x, y, k)
+      t.collect{
+        case (x, y, k) if m.contains(x) => ((x, y, k), resolveStore(vars2, iotaHom(bone)(m(x)))(y, k))
+      }.toMap
     }
 
     def delta(q: Q, b: Bone, a: A): (Q, Bone) = (msst.sst.δ(q, a), largeDeltaPrime(b, msst.sst.η(q, a)))
