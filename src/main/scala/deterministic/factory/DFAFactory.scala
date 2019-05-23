@@ -146,6 +146,7 @@ case class DFAFactory(charSet : Set[Char]) {
     formula match {
       case a : StrToRe => unitNFA(a.str)
       case a : ReRange => unitNFA(a.chars)
+      case _ : ReAllchar=> unitNFA(charSet)
       case a : ReUnion => altNFA(RegToNFA(a.re1), RegToNFA(a.re2))
       case a : ReConcat=> conNFA(RegToNFA(a.re1), RegToNFA(a.re2))
       case a : ReStar  => starNFA(RegToNFA(a.re))

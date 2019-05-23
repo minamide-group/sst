@@ -16,6 +16,7 @@ case class Checker(file : File, options : Map[String, List[String]]) {
   val lines = Source.fromFile(file.getPath).getLines().toList
   val (formula, getModel) = FormulaBuilder(lines).output
   val clauses : List[Clause] = SLConsBuilder(formula).output
+  val printOption : Boolean = options.contains("-p")
 
   def output: (Boolean, String) = {
     loop(clauses)
@@ -41,14 +42,7 @@ case class Checker(file : File, options : Map[String, List[String]]) {
     val chars = chars0 ++ List.range(0, ascii).map(_.toChar).toSet
     val split = 655.toChar
     val getLength = ie.flatMap(t=>t.strVs).intersect(nameToIdx.keySet).nonEmpty
-    val (sstList, sstInt, sstChar, sstSat) = SSTBuilder(we, sr, chars, split, nameToIdx.size, getModel, getLength).output
-
-    if(options.contains("-sstInfo")){
-      if(sstInt!=null)
-        sstInt.print
-      else if(sstChar!=null)
-        sstChar.print
-    }
+    val (sstList, sstInt, sstChar, sstSat) = SSTBuilder(we, sr, chars, split, nameToIdx.size, getModel, getLength, printOption).output
 
     if(!sstSat)
       return (false, "")

@@ -1,14 +1,62 @@
 package deterministic.boundedcopy.composition
 
+import java.util.Calendar
+
 import deterministic.boundedcopy.SST
 
-object CompositionZZ {
+case class CompositionZZ(printOption : Boolean) {
 
   def compose[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]) = {
     val boundness = calcBoundedness(sst2)
+    val t1 = System.currentTimeMillis()
+    if(printOption){
+      println("Start Composition of SSTs: ")
+      println("    " + sst1)
+      println("    " + sst2)
+      println()
+      println("    Start Composition to Monoid SST: ")
+      println("        " +  getTime())
+    }
     val msst0 = composeToMonoidSST(sst1, sst2)
+    if(printOption) {
+      println("    End Composition to Monoid SST: " )
+      println("        " +  getTime())
+      println("        " + msst0.sst)
+      println()
+      println("    Start Trim of Monoid SST: ")
+      println("        " +  getTime())
+    }
     val sst = msst0.sst.trim
-    convertFromMonoidSST(boundness, MonoidSST(sst, msst0.vars2, msst0.final2))
+
+    if(printOption) {
+      println("    End Trim of Monoid SST: ")
+      println("        " +  getTime())
+      println("        " + sst)
+      println()
+      println("    Start Conversion to SST: ")
+      println("        " +  getTime())
+    }
+    val res0 = convertFromMonoidSST(boundness, MonoidSST(sst, msst0.vars2, msst0.final2))
+    if(printOption) {
+      println("    End Conversion to SST: ")
+      println("        " +  getTime())
+      println("        " + res0)
+      println()
+      println("    Start Trim of SST: " )
+      println("        " +  getTime())
+    }
+    val res = res0.trim
+    if(printOption) {
+      val t2 = System.currentTimeMillis()
+      println("    End Trim of SST: " )
+      println("        " +  getTime())
+      println("        " +  res)
+      println("End Composition SST. The result is:")
+      println("    " + res)
+      println("    time : " + (t2-t1)/1000.0+"s" )
+      println()
+    }
+    res
   }
 
   /**
@@ -341,5 +389,10 @@ object CompositionZZ {
     }
     val reachables = searchStates
     reachables.toSeq.map { case (_, m) => sst.vars.toSeq.map(y => sst.vars.toSeq.map(x => m(x, y)).sum).max }.max
+  }
+
+  def getTime() : String = {
+    val now = Calendar.getInstance().getTime()
+    now.toString.split(" ")(3)
   }
 }

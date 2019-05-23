@@ -181,7 +181,7 @@ case class FormulaBuilder(lines : List[String]) {
           (tokens.drop(5), StrAt(StrV(tokens(2)),tokens(3).toInt))
         }
         case "str.++"=>{ // ( str.++ x "abc" x )
-          def loop(temp : List[String], res : List[Either[StrV,String]]): (List[String], List[Either[StrV,String]]) ={
+          def loop(temp : List[String], res : List[Either[StrV, String]]): (List[String], List[Either[StrV,String]]) ={
             if(temp(0).equals(")"))
               (temp.drop(1),res)
             else if(temp(0).charAt(0)=='\"'){  //"abc"
@@ -217,6 +217,9 @@ case class FormulaBuilder(lines : List[String]) {
   }
 
   def parseRegular(tokens : List[String], strV : Set[String], intV : Set[String]): (List[String], ReturnRe) ={
+    if(tokens(0).equals("re.allchar")){ // re,allchar
+      return (tokens.drop(1), ReAllchar())
+    }
     tokens(1) match {
       case "str.to.re"=> { //( str.to.re  "abc" )
         (tokens.drop(4), StrToRe(tokens(2).drop(1).dropRight(1)))
@@ -229,15 +232,29 @@ case class FormulaBuilder(lines : List[String]) {
         val (temp, re) = parseRegular(tokens.drop(2), strV, intV)
         (temp.drop(1), ReConcat(ReStar(re), re))
       }
-      case "re.++"=>{ // ( re.++ ( str.to.re "a" ) ( str.to.re "b" ) )
-        val (temp1, re1) = parseRegular(tokens.drop(2), strV, intV)
-        val (temp2, re2) = parseRegular(temp1, strV, intV)
-        (temp2.drop(1), ReConcat(re1, re2))
+      case "re.++"=>{ // ( re.++ ( str.to.re "a" ) ( str.to.re "b" ) (...) (...) )
+        def loop(temp : List[String], re : ReturnRe) : (List[String], ReturnRe) = {
+          if(temp(0).equals(")"))
+            (temp.drop(1), re)
+          else{
+            val (temp1, re1) = parseRegular(temp, strV, intV)
+            loop(temp1, ReConcat(re, re1))
+          }
+        }
+        val (temp0, re0) = parseRegular(tokens.drop(2), strV, intV)
+        loop(temp0, re0)
       }
-      case "re.union"=>{ // ( re.union ( str.to.re "a" ) ( str.to.re "b" ) )
-        val (temp1, re1) = parseRegular(tokens.drop(2), strV, intV)
-        val (temp2, re2) = parseRegular(temp1, strV, intV)
-        (temp2.drop(1), ReUnion(re1, re2))
+      case "re.union"=>{ // ( re.union ( str.to.re "a" ) ( str.to.re "b" ) (...) (...) ); one or more
+        def loop(temp : List[String], re : ReturnRe) : (List[String], ReturnRe) = {
+          if(temp(0).equals(")"))
+            (temp.drop(1), re)
+          else{
+            val (temp1, re1) = parseRegular(temp, strV, intV)
+            loop(temp1, ReUnion(re, re1))
+          }
+        }
+        val (temp0, re0) = parseRegular(tokens.drop(2), strV, intV)
+        loop(temp0, re0)
       }
       case "re.range"=>{// ( re.range "a" "b" )
         (tokens.drop(5), ReRange(tokens(2).charAt(1), tokens(3).charAt(1)))

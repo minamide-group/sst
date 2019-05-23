@@ -85,21 +85,35 @@ str.in.re x regex
 ```
 str.to.re str
 ```
+**str** is a constant string.
+
 ```
 re.++ regex1 regex2
 ```
+Now **re.++** takes one or more arguments.
+
 ```
 re.union regex1 regex2
 ```
+Now **re.union** takes one or more arguments.
+
 ```
 re.* regex
 ```
+
 ```
 re.+ regex
 ```
+
 ```
 re.range s t
 ```
+
+```
+re.allchar
+```
+**re.allchar** represents any symbol in the input constraint.
+
 
 ## Running the test
 
@@ -146,20 +160,15 @@ checker substr.smt2 -ascii i
 **i** is an integer ranging from 0 to 256. The solver will simply
 add the characters from 0 to **i-1** to the alphabet.
 
-### Print composed SST:
+### Print Details in SST Composition:
 ```
-checker substr.smt2 -sstInfo
+checker substr.smt2 -p
 ```
 ```
---------start----------
-states num: 5
-----------
-vars num: 1
-----------
-delta size: 4
-----------
-eta size: 4
----------end-----------
+SST number: 1
+SST List:
+Q: 5,  X: 2, Delta: 4, Eta: 4
+
 sat
 (model
   (define-fun x0 () String

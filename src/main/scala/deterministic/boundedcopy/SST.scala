@@ -75,6 +75,8 @@ case class SST[Q, Σ, Γ, X](
     _trans(input)(q)(vars.map(x => (x, List(Left(x)))).toMap)
   }
 
+  override def toString: String = "Q: " + states.size + ",  X: " + vars.size + ", Delta: " + δ.size + ", Eta: " + η.size
+
   def trim: SST[Q, Σ, Γ, X] = trimStates.trimVars
 
   def trimStates: SST[Q, Σ, Γ, X] = {
@@ -85,8 +87,26 @@ case class SST[Q, Σ, Γ, X](
   def toDFA = DFA(states, s0, δ, f.keySet)
 
   def trimVars: SST[Q, Σ, Γ, X] = {
-    val newVars = usedVars.intersect(nonEmptyVars)
+//    def star[X](next: X => Set[X])(v1: Set[X]): Set[X] = {
+//      val v2 = v1.flatMap(next) ++ v1
+//      if (v1 == v2) v1
+//      else star(next)(v2)
+//    }
+//
+//    def nonRedundantVars: Set[X] = {
+//      def app(xs: Map[X, Set[X]], ys: Map[X, Set[X]]): Map[X, Set[X]] = vars.map(v => (v, xs.getOrElse(v, Set()) ++ ys.getOrElse(v, Set()))).toMap
+//
+//      val labelx: List[Map[X, Set[X]]] = η.toList.map(_._2.map { case (x, y) => (x, y.collect { case Left(x) => x }.toSet) })
+//      val label: Map[X, Set[X]] = labelx.foldLeft(Map[X, Set[X]]()) { (acc, i) => app(acc, i) }
+//      val revlabel: Map[X, Set[X]] = vars.map { x => (x, vars.filter { y => label.withDefaultValue(Set())(y)(x) }) }.toMap
+//      val use: Set[X] = f.flatMap(_._2).collect { case Left(x) => x }.toSet
+//      val nonempty: Set[X] = η.toList.flatMap(_._2).filter { r => r._2.exists(_.isRight) }.map(_._1).toSet
+//
+//      star(label)(use).intersect(star(revlabel)(nonempty))
+//    }
+//    val newVars = nonRedundantVars
 
+    val newVars = usedVars.intersect(nonEmptyVars)
     val newEta = η.map(
       r => r._1 -> r._2.filter(x => newVars(x._1)).map(x => x._1 -> x._2.filter(e => (e.isRight) || (e.isLeft && newVars(e.left.get))))
     ).withDefaultValue(newVars.map(x => x -> List()).toMap.withDefaultValue(List()))
@@ -97,15 +117,15 @@ case class SST[Q, Σ, Γ, X](
   }
 
   def usedVars: Set[X] = {
-    val simpleDelta : Map[(Q, Q), Map[X, Set[X]]] = δ.map(r => ((r._1._1, r._2), r._1._2, η.withDefaultValue(Map())(r._1))).groupBy(_._1).map(t=> {
-      def getNext(queue : List[Map[X, Set[X]]], res : Map[X, Set[X]]):Map[X, Set[X]] = {
+    val simpleDelta: Map[(Q, Q), Map[X, Set[X]]] = δ.map(r => ((r._1._1, r._2), r._1._2, η.withDefaultValue(Map())(r._1))).groupBy(_._1).map(t => {
+      def getNext(queue: List[Map[X, Set[X]]], res: Map[X, Set[X]]): Map[X, Set[X]] = {
         queue match {
           case Nil => res
-          case m :: rest => getNext(rest, vars.map(x=> x-> (m.withDefaultValue(Set())(x) ++ res.withDefaultValue(Set())(x)) ).toMap)
+          case m :: rest => getNext(rest, vars.map(x => x -> (m.withDefaultValue(Set())(x) ++ res.withDefaultValue(Set())(x))).toMap)
         }
       }
 
-      t._1 -> getNext(t._2.map(_._3).toList.map(_.map(tt=> tt._1-> tt._2.collect{case Left(x)=>x}.toSet)), Map())
+      t._1 -> getNext(t._2.map(_._3).toList.map(_.map(tt => tt._1 -> tt._2.collect { case Left(x) => x }.toSet)), Map())
     })
 
     def search(queue: List[(Q, Set[X])], qToXs: Map[Q, Set[X]]): Map[Q, Set[X]] = {
@@ -113,7 +133,7 @@ case class SST[Q, Σ, Γ, X](
         case Nil => qToXs
         case ss :: rest => {
           val newS: Map[Q, Set[X]] = simpleDelta.filter(r => r._1._2 == ss._1).map(r =>
-            (r._1._1, ss._2.flatMap(x => r._2(x) ++ ss._2 ))
+            (r._1._1, ss._2.flatMap(x => r._2(x) ++ ss._2))
           ).filterNot(t => qToXs.contains(t._1) && t._2.subsetOf(qToXs(t._1)))
 
           search(rest ::: newS.toList, states.map(q => q -> (newS.withDefaultValue(Set())(q) ++ qToXs.withDefaultValue(Set())(q))).toMap)
@@ -126,19 +146,19 @@ case class SST[Q, Σ, Γ, X](
   }
 
   def nonEmptyVars: Set[X] = {
-    val simpleDelta : Map[(Q, Q), Map[X, (Set[X], Set[Γ])]] = δ.map(r => ((r._1._1, r._2), r._1._2, η.withDefaultValue(Map())(r._1))).groupBy(_._1).map(t=> {
-      def getNext(queue : List[Map[X, (Set[X], Set[Γ])]], res : Map[X, (Set[X], Set[Γ])]):Map[X, (Set[X], Set[Γ])] = {
+    val simpleDelta: Map[(Q, Q), Map[X, (Set[X], Set[Γ])]] = δ.map(r => ((r._1._1, r._2), r._1._2, η.withDefaultValue(Map())(r._1))).groupBy(_._1).map(t => {
+      def getNext(queue: List[Map[X, (Set[X], Set[Γ])]], res: Map[X, (Set[X], Set[Γ])]): Map[X, (Set[X], Set[Γ])] = {
         queue match {
           case Nil => res
-          case m :: rest => getNext(rest, vars.map(x=>
-            x->(m.withDefaultValue((Set(), Set()))(x)._1 ++ res.withDefaultValue((Set(), Set()))(x)._1,
-                m.withDefaultValue((Set(), Set()))(x)._2 ++ res.withDefaultValue((Set(), Set()))(x)._2)
-            ).toMap)
+          case m :: rest => getNext(rest, vars.map(x =>
+            x -> (m.withDefaultValue((Set(), Set()))(x)._1 ++ res.withDefaultValue((Set(), Set()))(x)._1,
+              m.withDefaultValue((Set(), Set()))(x)._2 ++ res.withDefaultValue((Set(), Set()))(x)._2)
+          ).toMap)
         }
       }
 
-      t._1 -> getNext(t._2.map(_._3).toList.map(_.map(tt=>
-        tt._1-> (tt._2.collect{case Left(x)=>x}.toSet, tt._2.collect{case Right(c)=>c}.toSet))), Map())
+      t._1 -> getNext(t._2.map(_._3).toList.map(_.map(tt =>
+        tt._1 -> (tt._2.collect { case Left(x) => x }.toSet, tt._2.collect { case Right(c) => c }.toSet))), Map())
     })
 
     def search(queue: List[(Q, Set[X])], qToXs: Map[Q, Set[X]]): Map[Q, Set[X]] = {
