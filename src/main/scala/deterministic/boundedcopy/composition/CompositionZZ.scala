@@ -2,6 +2,7 @@ package deterministic.boundedcopy.composition
 
 import java.util.Calendar
 
+import deterministic.DFA
 import deterministic.boundedcopy.SST
 
 case class CompositionZZ(printOption : Boolean) {
@@ -18,37 +19,60 @@ case class CompositionZZ(printOption : Boolean) {
       println("        " +  getTime())
     }
     val msst0 = composeToMonoidSST(sst1, sst2)
+
     if(printOption) {
       println("    End Composition to Monoid SST: " )
       println("        " +  getTime())
       println("        " + msst0.sst)
       println()
-      println("    Start Trim of Monoid SST: ")
+      println("    Start Trim States of Monoid SST: ")
       println("        " +  getTime())
     }
-    val sst = msst0.sst.trim
+    val msst1 = msst0.trimStates
 
     if(printOption) {
-      println("    End Trim of Monoid SST: ")
+      println("    End Trim States of Monoid SST: " )
       println("        " +  getTime())
-      println("        " + sst)
+      println("        " + msst1.sst)
+      println()
+      println("    Start Trim Vars of Monoid SST: ")
+      println("        " +  getTime())
+    }
+    val msst2 = msst1.trimVars
+
+    if(printOption) {
+      println("    End Trim Vars of Monoid SST: ")
+      println("        " +  getTime())
+      println("        " + msst2.sst)
       println()
       println("    Start Conversion to SST: ")
       println("        " +  getTime())
     }
-    val res0 = convertFromMonoidSST(boundness, MonoidSST(sst, msst0.vars2, msst0.final2))
+    val res0 = convertFromMonoidSST(boundness, msst2).rename("r0")
+
     if(printOption) {
       println("    End Conversion to SST: ")
       println("        " +  getTime())
       println("        " + res0)
       println()
-      println("    Start Trim of SST: " )
+      println("    Start Trim States of SST: " )
       println("        " +  getTime())
     }
-    val res = res0.trim
+    val res1 = res0.trimStates
+
+    if(printOption) {
+      println("    End Trim States to SST: ")
+      println("        " +  getTime())
+      println("        " + res1)
+      println()
+      println("    Start Trim Vars of SST: " )
+      println("        " +  getTime())
+    }
+
+    val res = res1.trimVars
     if(printOption) {
       val t2 = System.currentTimeMillis()
-      println("    End Trim of SST: " )
+      println("    End Trim Vars of SST: " )
       println("        " +  getTime())
       println("        " +  res)
       println("End Composition SST. The result is:")

@@ -333,7 +333,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
 
   //CompositionZZ : avoid the generation of a number of useless states and transitions of MSST
   //                and remove useless variables of MSST
-  def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = CompositionZZ(printOption).compose(sst1, sst2).rename("r0")
+  def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = CompositionZZ(printOption).compose(sst1, sst2)
 
 
 }

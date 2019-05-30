@@ -87,26 +87,27 @@ case class SST[Q, Σ, Γ, X](
   def toDFA = DFA(states, s0, δ, f.keySet)
 
   def trimVars: SST[Q, Σ, Γ, X] = {
-//    def star[X](next: X => Set[X])(v1: Set[X]): Set[X] = {
-//      val v2 = v1.flatMap(next) ++ v1
-//      if (v1 == v2) v1
-//      else star(next)(v2)
-//    }
-//
-//    def nonRedundantVars: Set[X] = {
-//      def app(xs: Map[X, Set[X]], ys: Map[X, Set[X]]): Map[X, Set[X]] = vars.map(v => (v, xs.getOrElse(v, Set()) ++ ys.getOrElse(v, Set()))).toMap
-//
-//      val labelx: List[Map[X, Set[X]]] = η.toList.map(_._2.map { case (x, y) => (x, y.collect { case Left(x) => x }.toSet) })
-//      val label: Map[X, Set[X]] = labelx.foldLeft(Map[X, Set[X]]()) { (acc, i) => app(acc, i) }
-//      val revlabel: Map[X, Set[X]] = vars.map { x => (x, vars.filter { y => label.withDefaultValue(Set())(y)(x) }) }.toMap
-//      val use: Set[X] = f.flatMap(_._2).collect { case Left(x) => x }.toSet
-//      val nonempty: Set[X] = η.toList.flatMap(_._2).filter { r => r._2.exists(_.isRight) }.map(_._1).toSet
-//
-//      star(label)(use).intersect(star(revlabel)(nonempty))
-//    }
-//    val newVars = nonRedundantVars
+    def star[X](next: X => Set[X])(v1: Set[X]): Set[X] = {
+      val v2 = v1.flatMap(next) ++ v1
+      if (v1 == v2) v1
+      else star(next)(v2)
+    }
 
-    val newVars = usedVars.intersect(nonEmptyVars)
+    def nonRedundantVars: Set[X] = {
+      def app(xs: Map[X, Set[X]], ys: Map[X, Set[X]]): Map[X, Set[X]] = vars.map(v => (v, xs.getOrElse(v, Set()) ++ ys.getOrElse(v, Set()))).toMap
+
+      val labelx: List[Map[X, Set[X]]] = η.toList.map(_._2.map { case (x, y) => (x, y.collect { case Left(x) => x }.toSet) })
+      val label: Map[X, Set[X]] = labelx.foldLeft(Map[X, Set[X]]()) { (acc, i) => app(acc, i) }
+      val revlabel: Map[X, Set[X]] = vars.map { x => (x, vars.filter { y => label.withDefaultValue(Set())(y)(x) }) }.toMap
+      val use: Set[X] = f.flatMap(_._2).collect { case Left(x) => x }.toSet
+      val nonempty: Set[X] = η.toList.flatMap(_._2).filter { r => r._2.exists(_.isRight) }.map(_._1).toSet
+
+      star(label)(use).intersect(star(revlabel)(nonempty))
+    }
+
+    val newVars : Set[X] = if(δ.isEmpty) Set() else nonRedundantVars
+
+    //val newVars = usedVars.intersect(nonEmptyVars)
     val newEta = η.map(
       r => r._1 -> r._2.filter(x => newVars(x._1)).map(x => x._1 -> x._2.filter(e => (e.isRight) || (e.isLeft && newVars(e.left.get))))
     ).withDefaultValue(newVars.map(x => x -> List()).toMap.withDefaultValue(List()))

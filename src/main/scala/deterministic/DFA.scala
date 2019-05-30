@@ -37,6 +37,7 @@ case class DFA[Q, Σ](
       if (newS ++ s == s) s
       else star(newS ++ s, rules)
     }
+
     val next0 = δ.groupBy(_._1._1).map(t => t._1 -> t._2.map(_._2).toSet)
     val reachedFromS0 = star(Set(s0), next0)
     val next = next0.filter(p => reachedFromS0(p._1)).map(p => p._1 -> p._2.filter(q => reachedFromS0(q))).filterNot(_._2.isEmpty)
