@@ -20,6 +20,12 @@ case class TransducerFactory(charSet: Set[Char]) {
 
   }
 
+  private def strMonoid: Monoid[List[Char]] = new Monoid[List[Char]] {
+    def append(f1: List[Char], f2: => List[Char]): List[Char] = f1 ::: f2
+
+    def zero: List[Char] = List()
+  }
+
   def replaceAll(from: Char, to: String): Transducer[TransState, Char, List[Char]] = {
 
     implicit def monoid = strMonoid
@@ -42,7 +48,7 @@ case class TransducerFactory(charSet: Set[Char]) {
 
     if (begin > end || begin < 0)
       return empty()
-    if(begin == end)
+    if (begin == end)
       return epsilon()
 
     val states = List.range(0, end + 1).map(i => TransState(i))
@@ -70,11 +76,6 @@ case class TransducerFactory(charSet: Set[Char]) {
     Transducer(states.toSet, states(0), delta, eta, states.toSet)
   }
 
-  def empty(): Transducer[TransState, Char, List[Char]] ={
-    implicit def monoid = strMonoid
-    Transducer(Set(), TransState(0), Map(), Map(), Set())
-  }
-
   def subString(begin: Int): Transducer[TransState, Char, List[Char]] = {
 
     implicit def monoid = strMonoid
@@ -97,9 +98,9 @@ case class TransducerFactory(charSet: Set[Char]) {
     Transducer(states.toSet, states(0), delta, eta, f)
   }
 
-  private def strMonoid: Monoid[List[Char]] = new Monoid[List[Char]] {
-    def append(f1: List[Char], f2: => List[Char]): List[Char] = f1 ::: f2
+  def empty(): Transducer[TransState, Char, List[Char]] = {
+    implicit def monoid = strMonoid
 
-    def zero: List[Char] = List()
+    Transducer(Set(), TransState(0), Map(), Map(), Set())
   }
 }

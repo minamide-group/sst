@@ -10,24 +10,24 @@ import formula.str.StrV
 import scala.io.Source
 import scala.sys.process._
 
-case class Checker(file : File, options : Map[String, List[String]]) {
+case class Checker(file: File, options: Map[String, List[String]]) {
 
   type Clause = (List[AtomicSLCons], Set[RegCons[Char]], Set[Char], Set[IntegerEquation], Map[StrV, Int])
   val lines = Source.fromFile(file.getPath).getLines().toList
   val (formula, getModel) = FormulaBuilder(lines).output
-  val clauses : List[Clause] = SLConsBuilder(formula).output
-  val printOption : Boolean = options.contains("-p")
+  val clauses: List[Clause] = SLConsBuilder(formula).output
+  val printOption: Boolean = options.contains("-p")
 
   def output: (Boolean, String) = {
     loop(clauses)
   }
 
-  def loop(clauses: List[Clause])  : (Boolean, String) = {
+  def loop(clauses: List[Clause]): (Boolean, String) = {
     clauses match {
       case Nil => (false, "")
       case x :: xs => {
         val (sat, witness) = check(x)
-        if(sat)
+        if (sat)
           (sat, witness)
         else
           loop(xs)
@@ -35,23 +35,23 @@ case class Checker(file : File, options : Map[String, List[String]]) {
     }
   }
 
-  def check(clause: Clause) : (Boolean, String) = {
+  def check(clause: Clause): (Boolean, String) = {
     val (we, sr, chars0, ie, nameToIdx) = clause
-    val asciiSize = if(options.contains("-ascii")) options("-ascii").head.toInt else 0
+    val asciiSize = if (options.contains("-ascii")) options("-ascii").head.toInt else 0
     val ascii = Math.min(256, asciiSize)
     val chars = chars0 ++ List.range(0, ascii).map(_.toChar).toSet
     val split = 655.toChar
-    val getLength = ie.flatMap(t=>t.strVs).intersect(nameToIdx.keySet).nonEmpty
+    val getLength = ie.flatMap(t => t.strVs).intersect(nameToIdx.keySet).nonEmpty
     val (sstList, sstInt, sstChar, sstSat) = SSTBuilder(we, sr, chars, split, nameToIdx.size, getModel, getLength, printOption).output
 
-    if(!sstSat)
+    if (!sstSat)
       return (false, "")
-    if(ie.isEmpty){
-      if(getModel) {
+    if (ie.isEmpty) {
+      if (getModel) {
         val witness = WitnessBuilder("", nameToIdx, sstChar, null, chars, split).output
         return (true, witness)
       }
-      else{
+      else {
         return (true, "")
       }
     }
@@ -60,20 +60,20 @@ case class Checker(file : File, options : Map[String, List[String]]) {
     val z3Input = Z3InputBuilder(ie.toList, semiLinear, nameToIdx, getModel).output
     val z3Output = executeZ3(z3Input)
 
-    if(!z3Output.startsWith("sat")) {
+    if (!z3Output.startsWith("sat")) {
       return (false, "")
     }
-    else{
-      if(getModel) {
+    else {
+      if (getModel) {
         val witness = WitnessBuilder(z3Output, nameToIdx, sstChar, trans, chars, split).output
         return (true, witness)
       }
       else
-        return  (true, "")
+        return (true, "")
     }
   }
 
-  def executeZ3(input : String): String = {
+  def executeZ3(input: String): String = {
     val path = System.getProperty("user.dir") + "\\temp"
 
     val file = new File(path)
@@ -85,10 +85,10 @@ case class Checker(file : File, options : Map[String, List[String]]) {
     pw.write(input)
     pw.close
 
-    val output : String = try{
+    val output: String = try {
       ("z3 -smt2 " + path).!!
-    }catch {
-      case _ : Throwable => "unsat"
+    } catch {
+      case _: Throwable => "unsat"
     }
     file.delete()
 

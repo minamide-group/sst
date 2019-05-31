@@ -7,15 +7,15 @@ import formula.str.StrV
 case class Z3InputBuilder(intCons: List[IntegerEquation],
                           semiLinear: Set[(Map[Int, Int], Set[Map[Int, Int]])],
                           nameToIdx: Map[StrV, Int],
-                          getModel : Boolean
+                          getModel: Boolean
                          ) {
 
   def output: String = {
-    getDeclare + getLength() + getIntegerCons + "(check-sat)" + (if(getModel) "\n(get-model)" else "")
+    getDeclare + getLength() + getIntegerCons + "(check-sat)" + (if (getModel) "\n(get-model)" else "")
   }
 
-  val strVs : Set[StrV]= intCons.flatMap(e => e.strVs).toSet
-  val intVs : Set[IntV]= intCons.flatMap(e => e.intVs).toSet
+  val strVs: Set[StrV] = intCons.flatMap(e => e.strVs).toSet
+  val intVs: Set[IntV] = intCons.flatMap(e => e.intVs).toSet
   val m0: Map[Int, Int] = nameToIdx.map(t => t._2 -> 0) // default length increment is 0
   val list: List[(Map[Int, Int], List[Map[Int, Int]])] = semiLinear.toList.map(r => (m0 ++ r._1, r._2.toList.map(t => m0 ++ t)))
   val vecVars: List[(Int, Int)] = List.range(0, list.size).flatMap(i => List.range(0, list(i)._2.size).map(j => (i, j)))

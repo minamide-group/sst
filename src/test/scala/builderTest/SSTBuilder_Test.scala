@@ -1,16 +1,16 @@
 package builderTest
 
-import builder.{ParikhBuilder, SLConsBuilder, SSTBuilder}
-import formula.{Conjunction, Disjunction, Negation}
+import builder.{SLConsBuilder, SSTBuilder}
+import formula.Conjunction
 import formula.atomic.{IntegerEquation, StrInRe, WordEquation}
 import formula.integer.{IntC, StrLen}
 import formula.re.StrToRe
 import formula.str.{StrReplace, StrV}
 import org.scalatest.FlatSpec
 
-class SSTBuilder_Test extends FlatSpec{
+class SSTBuilder_Test extends FlatSpec {
 
-  "not getModel" should "run" in{
+  "not getModel" should "run" in {
     val c1 = WordEquation(StrV("x"), StrReplace(StrV("y"), "p", "r"))
     val c2 = WordEquation(StrV("w"), StrReplace(StrV("z"), "1", "2"))
     val c3 = IntegerEquation(IntC(39), StrLen(StrV("v")), 1)
@@ -22,11 +22,11 @@ class SSTBuilder_Test extends FlatSpec{
     val cons = consList(0)
     val sst = SSTBuilder(cons._1, cons._2, cons._3, '#', 5, false, false).output
 
-    sst._1.foreach(i=>i.print)
+    sst._1.foreach(i => i.print)
     sst._2.print
   }
 
-  "getModel" should "run" in{
+  "getModel" should "run" in {
     val c1 = WordEquation(StrV("x"), StrReplace(StrV("y"), "p", "r"))
     val c2 = WordEquation(StrV("w"), StrReplace(StrV("z"), "1", "2"))
     val c3 = IntegerEquation(IntC(39), StrLen(StrV("v")), 1)
@@ -43,7 +43,7 @@ class SSTBuilder_Test extends FlatSpec{
     sst._3.print
   }
 
-  "not getModel only regular" should "run" in{
+  "not getModel only regular" should "run" in {
     val c3 = IntegerEquation(IntC(39), StrLen(StrV("v")), 1)
     val c4 = StrInRe(StrV("u"), StrToRe("aad"), false)
     val formula = Conjunction(c3, c4)
@@ -56,7 +56,7 @@ class SSTBuilder_Test extends FlatSpec{
     sst._2.print
   }
 
-  "getModel only regular" should "run" in{
+  "getModel only regular" should "run" in {
     val c3 = IntegerEquation(IntC(39), StrLen(StrV("v")), 1)
     val c4 = StrInRe(StrV("u"), StrToRe("aad"), false)
     val formula = Conjunction(c3, c4)
@@ -70,7 +70,7 @@ class SSTBuilder_Test extends FlatSpec{
     sst._3.printDetail
   }
 
-  "not getModel only regular unsat" should "run" in{
+  "not getModel only regular unsat" should "run" in {
     val c3 = StrInRe(StrV("u"), StrToRe("ad"), false)
     val c4 = StrInRe(StrV("u"), StrToRe("aad"), false)
     val formula = Conjunction(c3, c4)

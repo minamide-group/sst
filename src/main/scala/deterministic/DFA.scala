@@ -98,13 +98,14 @@ case class DFA[Q, Σ](
     def getStatesAndDelta(list: List[S], res1: Set[S], res2: Map[(S, Σ), S]): (Set[S], Map[(S, Σ), S]) = {
       list match {
         case s :: rest => {
-          val newRules = δ.filter(r=>r._1._1==s._1).map(r=> (s, r._1._2)-> (r._2, dfa0.δ(s._2, r._1._2)))
+          val newRules = δ.filter(r => r._1._1 == s._1).map(r => (s, r._1._2) -> (r._2, dfa0.δ(s._2, r._1._2)))
           val newStates = newRules.toList.map(_._2).toSet -- res1
           getStatesAndDelta(rest ::: newStates.toList, res1 ++ newStates, res2 ++ newRules)
         }
         case Nil => (res1, res2)
       }
     }
+
     val init = (s0, dfa0.s0)
     val (states, rules) = getStatesAndDelta(List(init), Set(init), Map())
     val accept = states.filter(s => f(s._1) && dfa0.f(s._2))
@@ -112,5 +113,5 @@ case class DFA[Q, Σ](
     DFA(states, init, rules, accept)
   }
 
-  def alphabet : Set[Σ] = δ.map(t=>t._1._2).toSet
+  def alphabet: Set[Σ] = δ.map(t => t._1._2).toSet
 }

@@ -1,3 +1,3 @@
 package constraint.vars
 
-case class FAState(id : Int)
+case class FAState(id: Int)

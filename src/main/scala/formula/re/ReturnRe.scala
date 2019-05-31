@@ -1,5 +1,5 @@
 package formula.re
 
-trait ReturnRe{
-  def chars : Set[Char]
+trait ReturnRe {
+  def chars: Set[Char]
 }

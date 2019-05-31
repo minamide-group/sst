@@ -14,30 +14,30 @@ case class WitnessBuilder(z3output: String,
   def output: String = {
 
     val z3Witness = parse
-    val idxToName = nameToIdx.map(t=>t._2->t._1)
-    val len = z3Witness.filter(t=> t._1.startsWith("len_")).map(t=>t._1.drop(4)->t._2)
+    val idxToName = nameToIdx.map(t => t._2 -> t._1)
+    val len = z3Witness.filter(t => t._1.startsWith("len_")).map(t => t._1.drop(4) -> t._2)
 
-    val strVLength = len.filter(t=>t._1.forall(_.isDigit)).map(t=>t._1.toInt->t._2)
-    val witness0 = stringWitness(strVLength).zipWithIndex.map(t=> idxToName(t._2)->t._1).map(t=>toModel(t._1.name, "\""+t._2+"\"", "String"))
-    val witness1 = len.filterNot(t=>t._1.forall(_.isDigit)).map(t=>t._1->List.fill(t._2)(chars.head).mkString).map(t=>toModel(t._1, "\""+t._2+"\"", "String"))
-    val intVsWitness = z3Witness.filter(t=> t._1.startsWith("intV_")).map(t=>t._1.drop(5)->t._2).map(t=>toModel(t._1, t._2.toString, "Int"))
+    val strVLength = len.filter(t => t._1.forall(_.isDigit)).map(t => t._1.toInt -> t._2)
+    val witness0 = stringWitness(strVLength).zipWithIndex.map(t => idxToName(t._2) -> t._1).map(t => toModel(t._1.name, "\"" + t._2 + "\"", "String"))
+    val witness1 = len.filterNot(t => t._1.forall(_.isDigit)).map(t => t._1 -> List.fill(t._2)(chars.head).mkString).map(t => toModel(t._1, "\"" + t._2 + "\"", "String"))
+    val intVsWitness = z3Witness.filter(t => t._1.startsWith("intV_")).map(t => t._1.drop(5) -> t._2).map(t => toModel(t._1, t._2.toString, "Int"))
 
-    "(model\n" + witness0.mkString + witness1.mkString + intVsWitness.mkString +")"
+    "(model\n" + witness0.mkString + witness1.mkString + intVsWitness.mkString + ")"
   }
 
-  def toModel(name : String, value : String, typ : String) =  "  (define-fun " + name + " () " + typ +"\n    " + value+")\n"
+  def toModel(name: String, value: String, typ: String) = "  (define-fun " + name + " () " + typ + "\n    " + value + ")\n"
 
 
-  def parse:Map[String, Int] ={
+  def parse: Map[String, Int] = {
     //(define-fun, y, (), Int, 0), (define-fun, x, (), Int, 0),
     val tokens = z3output.replace(10.toChar.toString, " ").
       replace(13.toChar.toString, " ").
       split(" ").filterNot(_.isEmpty).toList.drop(2).dropRight(1)
 
-    def loop(temp : List[String], map : Map[String, Int]) : Map[String, Int] ={
+    def loop(temp: List[String], map: Map[String, Int]): Map[String, Int] = {
       temp match {
         case Nil => map
-        case _ => loop(temp.drop(5), map + (temp(1)->temp(4).dropRight(1).toInt))
+        case _ => loop(temp.drop(5), map + (temp(1) -> temp(4).dropRight(1).toInt))
       }
     }
 
@@ -45,7 +45,7 @@ case class WitnessBuilder(z3output: String,
   }
 
   def stringWitness(strVLength: Map[Int, Int]): List[String] = {
-    if(sst_Char==null)
+    if (sst_Char == null)
       return List()
 
     val wholeWitness = if (sst_Char.f.contains(sst_Char.s0)) {
@@ -93,7 +93,7 @@ case class WitnessBuilder(z3output: String,
       }
     }
 
-    bfs(trans.s0.toList.map(q => (q, "", lengths.map(t=> t._1->0))))
+    bfs(trans.s0.toList.map(q => (q, "", lengths.map(t => t._1 -> 0))))
   }
 
   def mapAdd[X](map1: Map[X, Int], map2: Map[X, Int]): Map[X, Int] = {
@@ -105,6 +105,6 @@ case class WitnessBuilder(z3output: String,
   }
 
   def mapEq[X](map1: Map[X, Int], map2: Map[X, Int]): Boolean = {
-    map1.keySet.forall(k =>map1(k) == map2.withDefaultValue(0)(k))
+    map1.keySet.forall(k => map1(k) == map2.withDefaultValue(0)(k))
   }
 }

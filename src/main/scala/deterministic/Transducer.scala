@@ -58,12 +58,12 @@ case class Transducer[Q, Σ, Γ](
 
   def trim = {
     val dfa = toDFA.trim
-    Transducer(dfa.states, dfa.s0, dfa.δ, η.filter(r=> dfa.δ.contains(r._1)), dfa.f)
+    Transducer(dfa.states, dfa.s0, dfa.δ, η.filter(r => dfa.δ.contains(r._1)), dfa.f)
   }
 
-  def intersect[Q1](dfa : DFA[Q1,Σ]) = {
-    val res0 : DFA[(Q, Q1), Σ]= toDFA.intersect(dfa)
-    val newEta = res0.δ.map(r=> r._1-> η(r._1._1._1, r._1._2))
+  def intersect[Q1](dfa: DFA[Q1, Σ]) = {
+    val res0: DFA[(Q, Q1), Σ] = toDFA.intersect(dfa)
+    val newEta = res0.δ.map(r => r._1 -> η(r._1._1._1, r._1._2))
     Transducer(res0.states, res0.s0, res0.δ, newEta, res0.f)
   }
 }

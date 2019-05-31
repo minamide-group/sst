@@ -4,32 +4,32 @@ import constraint.atomicSL.{AtomicSLCons, Concatenation, SSTConstraint, Transduc
 import constraint.regular.RegCons
 import constraint.vars.{FAState, SST_State, SST_Var, TransState}
 import deterministic.boundedcopy.SST
-import deterministic.boundedcopy.composition.{CompositionZ, CompositionZZ}
+import deterministic.boundedcopy.composition.Composition
 import deterministic.{DFA, Transducer}
 
-//from constraints to SSTs, and compose SST
 case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
                          regCons: Set[RegCons[Σ]],
                          chars: Set[Σ],
                          split: Σ,
-                         varNum : Int,
-                         getModel : Boolean,
-                         getLength : Boolean,
-                         printOption : Boolean = false) {
+                         varNum: Int,
+                         getModel: Boolean,
+                         getLength: Boolean,
+                         printOption: Boolean = false) {
 
   type MySST[X] = SST[SST_State, Σ, X, SST_Var]
   type Out[X] = Either[SST_Var, X]
 
+  //sstList, sst_Char, sst_Int, sat
   def output: (List[MySST[Σ]], MySST[Int], MySST[Σ], Boolean) = {
     if (atomicSLCons.isEmpty && regCons.isEmpty)
       (List(), null, null, true)
     else {
       val sstListOption = constraintsToSSTs(atomicSLCons, regCons)
-      if(sstListOption.isEmpty)
+      if (sstListOption.isEmpty)
         (List(), null, null, false)
-      else{
+      else {
         val sstList = sstListOption.get
-        if(printOption){
+        if (printOption) {
           println("SST number: " + sstList.size)
           println("SST List: ")
           sstList.foreach(println)
@@ -107,7 +107,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
             case t: TransducerConstraint[Σ] => {
               val regCons = varDFA.filter(p => p._1 < leftId && p._1 != t.source)
               val fst = if (varDFA.contains(t.source)) addDefault(t.fst).intersect(addDefault(varDFA(t.source))).trim.rename else t.fst
-              if(fst.states.isEmpty)
+              if (fst.states.isEmpty)
                 None
               else
                 star(rest, varDFA.filterNot(p => p._1 < leftId), res ::: List(getOne(TransducerConstraint(t.left, fst, t.source), regCons)))
@@ -115,7 +115,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
             case s: SSTConstraint[Σ] => {
               val regCons = varDFA.filter(p => p._1 < leftId && p._1 != s.source)
               val sst = if (varDFA.contains(s.source)) compose(dfaToSST(varDFA(s.source)), s.sst) else s.sst
-              if(sst.states.isEmpty)
+              if (sst.states.isEmpty)
                 None
               else
                 star(rest, varDFA.filterNot(p => p._1 < leftId), res ::: List(getOne(SSTConstraint(s.left, sst, s.source), regCons)))
@@ -131,41 +131,41 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     star(list, varDFA, List())
   }
 
-  def composeSSTs(sstList: List[MySST[Σ]], getModel : Boolean, getLength : Boolean): (MySST[Int], MySST[Σ], Boolean) = {
+  def composeSSTs(sstList: List[MySST[Σ]], getModel: Boolean, getLength: Boolean): (MySST[Int], MySST[Σ], Boolean) = {
     val list = sstList.dropRight(1)
     val last_char = sstList.last.trim
-    if(list.size==0) {
-      if(getLength && getModel)
+    if (list.size == 0) {
+      if (getLength && getModel)
         (renameToInt(last_char), last_char, last_char.states.nonEmpty)
-      else if(getLength){
+      else if (getLength) {
         (renameToInt(last_char), null, last_char.states.nonEmpty)
       }
-      else{
+      else {
         (null, last_char, last_char.states.nonEmpty)
       }
     }
-    else{
+    else {
       val sst0 = composeSSTs(list)
-      if(getLength && getModel) {
+      if (getLength && getModel) {
         val sst_int = compose(sst0, renameToInt(last_char))
         val sst_char = compose(sst0, last_char)
         (sst_int, sst_char, sst_char.states.nonEmpty)
       }
-      else if(getLength){
+      else if (getLength) {
         val sst_int = compose(sst0, renameToInt(last_char))
         (sst_int, null, sst_int.states.nonEmpty)
       }
-      else{
+      else {
         val sst_char = compose(sst0, last_char)
-        ( null, sst_char, sst_char.states.nonEmpty)
+        (null, sst_char, sst_char.states.nonEmpty)
       }
     }
   }
 
-  def composeSSTs(sstList: List[MySST[Σ]]) : MySST[Σ] = {
-    if(sstList.size==1)
+  def composeSSTs(sstList: List[MySST[Σ]]): MySST[Σ] = {
+    if (sstList.size == 1)
       return sstList.head.trim
-    sstList.drop(2).foldLeft(compose(sstList(0), sstList(1))){(x,y)=> compose(x,y)}
+    sstList.drop(2).foldLeft(compose(sstList(0), sstList(1))) { (x, y) => compose(x, y) }
   }
 
   def dfaToSST(dfa: DFA[FAState, Σ]): MySST[Σ] = {
@@ -187,6 +187,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
 
   private def replace(sst: MySST[Σ], q: SST_State, replacement: DFA[FAState, Σ]): MySST[Σ] = {
     def tName(s: FAState) = "t" + s.id
+
     val v = SST_Var(q.id, q.name)
     val toNewStates = replacement.states.map(x => x -> SST_State(q.id, tName(x))).toMap
     val newStates = sst.states - q ++ replacement.states.map(toNewStates(_))
@@ -194,7 +195,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
 
     val newDelta = sst.δ.filterNot(r => r._1._1 == q || r._2 == q) ++
       replacement.δ.map(r => (toNewStates(r._1._1), r._1._2) -> toNewStates(r._2)) ++
-      (if(toNewStates.contains(replacement.s0)) sst.δ.filter(r => r._2 == q && r._1._2 == split).map(r => r._1 -> toNewStates(replacement.s0)) else Map()) ++
+      (if (toNewStates.contains(replacement.s0)) sst.δ.filter(r => r._2 == q && r._1._2 == split).map(r => r._1 -> toNewStates(replacement.s0)) else Map()) ++
       replacement.f.map(qf => (toNewStates(qf), split) -> sst.δ(q, split))
 
     val unit = sst.vars.map(x => x -> listC(x)).toMap
@@ -286,7 +287,7 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
 
   private def renameToInt(sst: MySST[Σ]): MySST[Int] = {
     val newF = sst.f.map(t => t._1 ->
-      List.range(0, sst.vars.filter(v=>v.name.contains("sst")).size).map(i => Left(SST_Var(i, t._1.name)))
+      List.range(0, sst.vars.filter(v => v.name.contains("sst")).size).map(i => Left(SST_Var(i, t._1.name)))
     )
 
     val newEta = sst.η.map(r =>
@@ -326,14 +327,5 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     Transducer(trans.states + sink, trans.s0, trans.δ.withDefaultValue(sink), trans.η, trans.f)
   }
 
-  //def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = Composition.compose(addDefault(sst1.trim), addDefault(sst2.trim)).trim.rename("r0")
-
-  //CompositionZ : remove useless states and variables of MSST.
-  //def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = CompositionZ.compose(addDefault(sst1.trim), addDefault(sst2.trim)).trim.rename("r0")
-
-  //CompositionZZ : avoid the generation of a number of useless states and transitions of MSST
-  //                and remove useless variables of MSST
-  def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = CompositionZZ(printOption).compose(sst1, sst2)
-
-
+  def compose[X](sst1: MySST[Σ], sst2: MySST[X]): MySST[X] = Composition(printOption).compose(sst1, sst2)
 }

@@ -3,7 +3,7 @@ package builderTest
 import builder.FormulaBuilder
 import org.scalatest.FlatSpec
 
-class Token_Test extends FlatSpec{
+class Token_Test extends FlatSpec {
 
 
   val lines = List(
@@ -26,7 +26,7 @@ class Token_Test extends FlatSpec{
     fb.getTokens(lines).foreach(println)
   }
 
-  "parse" should "run" in{
+  "parse" should "run" in {
     val fb = FormulaBuilder(lines)
     val tokens = fb.getTokens(lines)
     val (temp1, strV1, intV1) = fb.parseDeclareFun(tokens, Set(), Set())

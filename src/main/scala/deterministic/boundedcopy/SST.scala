@@ -105,7 +105,7 @@ case class SST[Q, Σ, Γ, X](
       star(label)(use).intersect(star(revlabel)(nonempty))
     }
 
-    val newVars : Set[X] = if(δ.isEmpty) Set() else nonRedundantVars
+    val newVars: Set[X] = if (δ.isEmpty) Set() else nonRedundantVars
 
     //val newVars = usedVars.intersect(nonEmptyVars)
     val newEta = η.map(
@@ -211,15 +211,7 @@ case class SST[Q, Σ, Γ, X](
   }
 
   def print {
-    println("--------start----------")
-    println("states num: " + states.size)
-    println("----------")
-    println("vars num: " + vars.size)
-    println("----------")
-    println("delta size: " + δ.size)
-    println("----------")
-    println("eta size: " + η.size)
-    println("---------end-----------")
+    println(toString)
   }
 
   def printDetail {

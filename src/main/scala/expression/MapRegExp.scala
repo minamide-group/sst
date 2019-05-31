@@ -5,7 +5,7 @@ import expression.regex._
 object MapRegExp extends AbstractRegExp[Set[(Map[Int, Int], Set[Map[Int, Int]])], Map[Int, Int]] {
   type CharExp1 = CharExp[Set[(Map[Int, Int], Set[Map[Int, Int]])]]
 
-  override def eval(r : RegExp): RegExp = {
+  override def eval(r: RegExp): RegExp = {
     r match {
       case EmptyExp => EmptyExp
       case EpsExp => CharExp(Set[(Map[Int, Int], Set[Map[Int, Int]])]((Map().withDefaultValue(0), Set.empty)))

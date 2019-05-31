@@ -16,7 +16,7 @@ case class SLConsBuilder(formula: ReturnBoolean) {
 
   //return a list of conjunctive clauses which are in SL
   def output: List[outputType] = {
-    def loop(res: List[outputType], queue: List[Set[Atomic]]): List[outputType]= {
+    def loop(res: List[outputType], queue: List[Set[Atomic]]): List[outputType] = {
       queue match {
         case Nil => res
         case x :: xs => {
@@ -25,7 +25,7 @@ case class SLConsBuilder(formula: ReturnBoolean) {
           else {
             val we = x.collect { case a: WordEquation => a }.toList
             val sr = x.collect { case a: StrInRe => a }
-            val strVs = we.flatMap(e => e.strVs).toSet ++ sr.flatMap(e=>e.strVs)
+            val strVs = we.flatMap(e => e.strVs).toSet ++ sr.flatMap(e => e.strVs)
             val ie = x.collect { case a: IntegerEquation => a }
             val charSet = x.flatMap(a => a.chars)
             val chars = if (charSet.isEmpty) Set('a') else charSet
@@ -39,7 +39,7 @@ case class SLConsBuilder(formula: ReturnBoolean) {
       }
     }
 
-    if(formula==null)
+    if (formula == null)
       return List()
     loop(List(), toDNF(formula).toList)
   }
@@ -72,13 +72,14 @@ case class SLConsBuilder(formula: ReturnBoolean) {
     val tf = TransducerFactory(chars)
     val df = DFAFactory(chars)
     val sf = SSTFactory(chars)
-    val we_defined_strVs = we.map(t=>t.left).toSet
+    val we_defined_strVs = we.map(t => t.left).toSet
 
     def output: Option[outputType] = {
       val strVListOption = checkSL(we)
-      val strVList = if (strVListOption.isEmpty)  List() else strVListOption.get
+      val strVList = if (strVListOption.isEmpty) List() else strVListOption.get
 
-      if(strVList.isEmpty && strVs.nonEmpty) {//not int SL
+      if (strVList.isEmpty && strVs.nonEmpty) {
+        //not int SL
         return None
       }
 
@@ -184,7 +185,7 @@ case class SLConsBuilder(formula: ReturnBoolean) {
       def loop(res: DFA[FAState, Char], list: List[DFA[FAState, Char]]): DFA[FAState, Char] = {
         list match {
           case Nil => res
-          case dfa :: xs =>loop(dfaIntersect(res,dfa), xs)
+          case dfa :: xs => loop(dfaIntersect(res, dfa), xs)
         }
       }
 
@@ -205,19 +206,19 @@ case class SLConsBuilder(formula: ReturnBoolean) {
     }
   }
 
-  private def addDefault(dfa: DFA[FAState, Char], sigma : Set[Char]): DFA[FAState, Char] = {
+  private def addDefault(dfa: DFA[FAState, Char], sigma: Set[Char]): DFA[FAState, Char] = {
     val sink = FAState(-1)
     val states = dfa.states + sink
-    val defaultDelta = states.flatMap(s=>sigma.map(c=> (s,c)-> sink)).toMap
+    val defaultDelta = states.flatMap(s => sigma.map(c => (s, c) -> sink)).toMap
     val delta = defaultDelta ++ dfa.δ
     DFA(states, dfa.s0, delta, dfa.f)
   }
 
-  private def dfaIntersect(dfa1: DFA[FAState, Char], dfa2: DFA[FAState, Char]) : DFA[FAState, Char] ={
-    val chars_1 = dfa1.δ.map(r=>r._1._2).toSet
-    val chars_2 = dfa2.δ.map(r=>r._1._2).toSet
-    val d1 = addDefault(dfa1, chars_1++chars_2)
-    val d2 = addDefault(dfa2, chars_1++chars_2)
+  private def dfaIntersect(dfa1: DFA[FAState, Char], dfa2: DFA[FAState, Char]): DFA[FAState, Char] = {
+    val chars_1 = dfa1.δ.map(r => r._1._2).toSet
+    val chars_2 = dfa2.δ.map(r => r._1._2).toSet
+    val d1 = addDefault(dfa1, chars_1 ++ chars_2)
+    val d2 = addDefault(dfa2, chars_1 ++ chars_2)
     d1.intersect(d2).minimize.trim.rename
   }
 }

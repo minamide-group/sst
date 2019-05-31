@@ -1,5 +1,5 @@
 package constraint.atomicSL
 
-trait AtomicSLCons{
-  def getLeftIdx():Int
+trait AtomicSLCons {
+  def getLeftIdx(): Int
 }

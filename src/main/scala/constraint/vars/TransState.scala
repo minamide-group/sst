@@ -1,3 +1,3 @@
 package constraint.vars
 
-case class TransState(id : Int)
+case class TransState(id: Int)
