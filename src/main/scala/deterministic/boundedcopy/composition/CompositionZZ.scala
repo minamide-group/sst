@@ -157,6 +157,7 @@ case class CompositionZZ(printOption : Boolean) {
     if(printOption) println("            Find states : " + getTime())
     val states : Set[(Q1, Trans)]= searchStates
 
+    if(printOption) println("                Q : " + states.size)
     if(printOption) println("            Find vars   : " + getTime())
     val vars = for (q2 <- sst2.states; x <- sst1.vars) yield (q2, x)
 
@@ -172,6 +173,7 @@ case class CompositionZZ(printOption : Boolean) {
         ((t._1._1, q._2), t._1._2) -> delta(t._1._1, q._2, t._1._2)
       )
     ).toMap
+    if(printOption) println("                Delta : " + deltaMap.size)
 
     if(printOption) println("            Trim states : " + getTime())
     val sMap = states.zipWithIndex.toMap
@@ -353,6 +355,7 @@ case class CompositionZZ(printOption : Boolean) {
 
     if(printOption) println("            Find states : " + getTime())
     val states : Set[(Q, Bone)] = searchStates
+    if(printOption) println("                Q : " + states.size)
 
     if(printOption) println("            Find vars   : " + getTime())
     val vars = for (x <- msst.sst.vars; y <- msst.vars2; k <- 0 to boundedness) yield (x, y, k)
@@ -366,6 +369,7 @@ case class CompositionZZ(printOption : Boolean) {
         ((t._1._1, q._2), t._1._2) -> delta(t._1._1, q._2, t._1._2)
       )
     ).toMap
+    if(printOption) println("                Delta : " + deltaMap.size)
 
     if(printOption) println("            Trim states : " + getTime())
     val sMap = states.zipWithIndex.toMap
