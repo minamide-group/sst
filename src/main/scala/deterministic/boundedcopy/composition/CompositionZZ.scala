@@ -25,20 +25,10 @@ case class CompositionZZ(printOption : Boolean) {
       println("        " +  getTime())
       println("        " + msst0.sst)
       println()
-      println("    Start Trim States of Monoid SST: ")
-      println("        " +  getTime())
-    }
-    val msst1 = msst0.trimStates
-
-    if(printOption) {
-      println("    End Trim States of Monoid SST: " )
-      println("        " +  getTime())
-      println("        " + msst1.sst)
-      println()
       println("    Start Trim Vars of Monoid SST: ")
       println("        " +  getTime())
     }
-    val msst2 = msst1.trimVars
+    val msst2 = msst0.trimVars
 
     if(printOption) {
       println("    End Trim Vars of Monoid SST: ")
@@ -55,21 +45,11 @@ case class CompositionZZ(printOption : Boolean) {
       println("        " +  getTime())
       println("        " + res0)
       println()
-      println("    Start Trim States of SST: " )
-      println("        " +  getTime())
-    }
-    val res1 = res0.trimStates
-
-    if(printOption) {
-      println("    End Trim States to SST: ")
-      println("        " +  getTime())
-      println("        " + res1)
-      println()
       println("    Start Trim Vars of SST: " )
       println("        " +  getTime())
     }
 
-    val res = res1.trimVars
+    val res = res0.trimVars
     if(printOption) {
       val t2 = System.currentTimeMillis()
       println("    End Trim Vars of SST: " )
@@ -86,7 +66,7 @@ case class CompositionZZ(printOption : Boolean) {
   /**
     * first step of composition.
     */
-  def composeToMonoidSST[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]): MonoidSST[(Q1, Map[(Q2, X), Q2]), A, C, (Q2, X), Y] = {
+  def composeToMonoidSST[Q1, Q2, A, B, C, X, Y](sst1: SST[Q1, A, B, X], sst2: SST[Q2, B, C, Y]) = {
     type Trans = Map[(Q2, X), Q2]
     type Update1 = Map[X, List[Either[X, B]]]
     type Update2 = Map[Y, List[Either[Y, C]]]
@@ -155,12 +135,10 @@ case class CompositionZZ(printOption : Boolean) {
 
     def final1(q1: Q1, f: Trans) = sst1.f.get(q1).map(innerEtaHat(f)(sst2.s0, _)).collect{case Some(t)=>t}
 
-    //def final2(q1: Q1, f: Trans) = sst1.f.get(q1).flatMap(u => sst2.f.get(innerDeltaHat(f)(sst2.s0, u)))
     def final2(q1: Q1, f: Trans) = sst1.f.get(q1).map(u => innerDeltaHat(f)(sst2.s0, u)).collect{case Some(t)=> t}
       .flatMap(sst2.f.get(_))
 
-    // there is no set of alphabet, we guess it...
-    //val alphabet: Set[A] = sst1.δ.keySet.map(_._2)
+    if(printOption) println("            Find s0     : " + getTime())
     val initial = (sst1.s0, (for (q2 <- sst2.states; x <- sst1.vars) yield ((q2, x), q2)).toMap)
 
     def searchStates: Set[(Q1, Trans)] = {
@@ -176,28 +154,37 @@ case class CompositionZZ(printOption : Boolean) {
       rec(List(initial), Set(initial))
     }
 
-    //val states = search(initial, alphabet, (qf: (Q1, Trans), a: A) => delta(qf._1, qf._2, a))
+    if(printOption) println("            Find states : " + getTime())
     val states : Set[(Q1, Trans)]= searchStates
 
+    if(printOption) println("            Find vars   : " + getTime())
     val vars = for (q2 <- sst2.states; x <- sst1.vars) yield (q2, x)
-    //val deltaMap = (for ((q, f) <- states; a <- alphabet) yield (((q, f), a), delta(q, f, a))).toMap
+
+    if(printOption) println("            Find f1     : " + getTime())
+    val f1 = (for ((q, f) <- states; u <- final1(q, f)) yield ((q, f), u)).toMap
+
+    if(printOption) println("            Find f2     : " + getTime())
+    val f2 = (for ((q, f) <- states; v <- final2(q, f)) yield ((q, f), v)).toMap
+
+    if(printOption) println("            Find delta  : " + getTime())
     val deltaMap = states.flatMap(q=>
       sst1.δ.filter(t=>t._1._1 == q._1).map(t=>
         ((t._1._1, q._2), t._1._2) -> delta(t._1._1, q._2, t._1._2)
       )
     ).toMap
 
-    //val etaMap = (for ((q, f) <- states; a <- alphabet) yield (((q, f), a), eta(q, f, a))).toMap
-    val etaMap = states.flatMap(q=>
-      sst1.δ.filter(t=>t._1._1 == q._1).map(t=>
-        ((t._1._1, q._2), t._1._2) -> eta(t._1._1, q._2, t._1._2)
-      )
-    ).toMap
-    val f1 = (for ((q, f) <- states; u <- final1(q, f)) yield ((q, f), u)).toMap
-    val f2 = (for ((q, f) <- states; v <- final2(q, f)) yield ((q, f), v)).toMap
+    if(printOption) println("            Trim states : " + getTime())
+    val sMap = states.zipWithIndex.toMap
+    val dMap = sMap.map(t=> t._2-> t._1)
+    val dfa0 : DFA[Int, A]= DFA(sMap.map(_._2).toSet, sMap(initial), deltaMap.map(t=> (sMap(t._1._1), t._1._2)-> sMap(t._2)), f1.map(t=> sMap(t._1)).toSet)
+    val dfa = dfa0.trim
 
-    val sst = SST(states, initial, vars, deltaMap, etaMap, f1)
-    MonoidSST(sst, sst2.vars, f2)
+    if(printOption) println("            Find eta    : " + getTime())
+    val etaMap = dfa.δ.map(t=> t._1-> eta(dMap(t._1._1)._1, dMap(t._1._1)._2, t._1._2))
+
+    val sst : SST[Int, A, Update2, (Q2, X)] = SST(dfa.states, dfa.s0, vars, dfa.δ, etaMap,  dfa.f.map(q=> q-> f1(dMap(q))).toMap)
+
+    MonoidSST(sst, sst2.vars, f2.map(t=> sMap(t._1)->t._2))
   }
 
   def getVariables[X, A](u: List[Either[X, A]]): List[X] = {
@@ -288,7 +275,7 @@ case class CompositionZZ(printOption : Boolean) {
   /**
     * second step of composition
     */
-  def convertFromMonoidSST[Q, A, B, X, Y](boundedness: Int, msst: MonoidSST[Q, A, B, X, Y]): SST[(Q, Map[X, Map[Y, List[Y]]]), A, B, (X, Y, Int)] = {
+  def convertFromMonoidSST[Q, A, B, X, Y](boundedness: Int, msst: MonoidSST[Q, A, B, X, Y]): SST[Int, A, B, (X, Y, Int)] = {
     type Shuffle = Map[Y, List[Y]]
     type UpdateM = Map[X, List[Either[X, Map[Y, List[Either[Y, B]]]]]]
     type Bone = Map[X, Shuffle]
@@ -347,6 +334,7 @@ case class CompositionZZ(printOption : Boolean) {
       })
     }
 
+    if(printOption) println("            Find s0     : " + getTime())
     val initial = (msst.sst.s0, (for (x <- msst.sst.vars) yield (x, Update.identityShuffle(msst.vars2))).toMap)
 
     def searchStates: Set[(Q, Bone)] = {
@@ -363,20 +351,32 @@ case class CompositionZZ(printOption : Boolean) {
       rec(List(initial), Set(initial))
     }
 
+    if(printOption) println("            Find states : " + getTime())
     val states : Set[(Q, Bone)] = searchStates
+
+    if(printOption) println("            Find vars   : " + getTime())
     val vars = for (x <- msst.sst.vars; y <- msst.vars2; k <- 0 to boundedness) yield (x, y, k)
+
+    if(printOption) println("            Find f      : " + getTime())
+    val f = (for ((q, f) <- states; u <- final0(q, f)) yield ((q, f), u)).toMap
+
+    if(printOption) println("            Find delta  : " + getTime())
     val deltaMap = states.flatMap(q=>
       msst.sst.δ.filter(t=>t._1._1 == q._1).map(t=>
         ((t._1._1, q._2), t._1._2) -> delta(t._1._1, q._2, t._1._2)
       )
     ).toMap
-    val etaMap = states.flatMap(q=>
-      msst.sst.δ.filter(t=>t._1._1 == q._1).map(t=>
-        ((t._1._1, q._2), t._1._2) -> eta(t._1._1, q._2, t._1._2)
-      )
-    ).toMap
-    val f = (for ((q, f) <- states; u <- final0(q, f)) yield ((q, f), u)).toMap
-    SST(states, initial, vars, deltaMap, etaMap, f)
+
+    if(printOption) println("            Trim states : " + getTime())
+    val sMap = states.zipWithIndex.toMap
+    val dMap = sMap.map(t=> t._2-> t._1)
+    val dfa0 : DFA[Int, A]= DFA(sMap.map(_._2).toSet, sMap(initial), deltaMap.map(t=> (sMap(t._1._1), t._1._2)-> sMap(t._2)), f.map(t=> sMap(t._1)).toSet)
+    val dfa = dfa0.trim
+
+    if(printOption) println("            Find eta    : " + getTime())
+    val etaMap = dfa.δ.map(t=> t._1-> eta(dMap(t._1._1)._1, dMap(t._1._1)._2, t._1._2))
+
+    SST(dfa.states, dfa.s0, vars, dfa.δ, etaMap, dfa.f.map(q=> q-> f(dMap(q))).toMap)
   }
 
   /**
