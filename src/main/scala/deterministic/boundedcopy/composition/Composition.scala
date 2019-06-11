@@ -129,8 +129,6 @@ case class Composition(printOption: Boolean) {
       }.toMap
     }
 
-    def delta(q1: Q1, f: Trans, a: A): (Q1, Trans) = (sst1.δ(q1, a), largeDelta(f, sst1.η(q1, a)))
-
     def eta(q1: Q1, f: Trans, a: A) = largeEta(f, sst1.η(q1, a))
 
     def final1(q1: Q1, f: Trans) = sst1.f.get(q1).map(innerEtaHat(f)(sst2.s0, _)).collect { case Some(t) => t }
@@ -141,24 +139,27 @@ case class Composition(printOption: Boolean) {
     if (printOption) println("            Find s0     : " + getTime())
     val initial = (sst1.s0, (for (q2 <- sst2.states; x <- sst1.vars) yield ((q2, x), q2)).toMap)
 
-    def searchStates: Set[(Q1, Trans)] = {
-      def rec(queue: List[(Q1, Trans)], openSet: Set[(Q1, Trans)]): Set[(Q1, Trans)] = {
+    def searchStatesAndDelta: (Set[(Q1, Trans)], Map[((Q1, Trans), A), (Q1, Trans)]) = {
+      def rec(queue: List[(Q1, Trans)], statesSet: Set[(Q1, Trans)], transitionMap: Map[((Q1, Trans), A), (Q1, Trans)]): (Set[(Q1, Trans)], Map[((Q1, Trans), A), (Q1, Trans)]) = {
         queue match {
           case (q :: qs) => {
-            val next = sst1.δ.filter(r => r._1._1 == q._1).toList.map(r => (r._2, largeDelta(q._2, sst1.η(q._1, r._1._2)))).filterNot(openSet(_))
-            rec(qs ::: next, openSet ++ next)
+            val transitions = sst1.δ.filter(r => r._1._1 == q._1).map(r => (q, r._1._2) -> (r._2, largeDelta(q._2, sst1.η(q._1, r._1._2))))
+            val states0 = transitions.toSet
+            val states = states0.map(r => r._2).filterNot(statesSet(_))
+            rec(qs ::: states.toList, statesSet ++ states, transitionMap ++ transitions)
           }
-          case _ => openSet
+          case _ => (statesSet, transitionMap)
         }
       }
 
-      rec(List(initial), Set(initial))
+      rec(List(initial), Set(initial), Map())
     }
 
-    if (printOption) println("            Find states : " + getTime())
-    val states: Set[(Q1, Trans)] = searchStates
+    if (printOption) println("            Find states and delta: " + getTime())
+    val (states, deltaMap) = searchStatesAndDelta
 
-    if (printOption) println("                Q : " + states.size)
+    if (printOption) println("                Q     : " + states.size)
+    if (printOption) println("                Delta : " + deltaMap.size)
     if (printOption) println("            Find vars   : " + getTime())
     val vars = for (q2 <- sst2.states; x <- sst1.vars) yield (q2, x)
 
@@ -168,19 +169,14 @@ case class Composition(printOption: Boolean) {
     if (printOption) println("            Find f2     : " + getTime())
     val f2 = (for ((q, f) <- states; v <- final2(q, f)) yield ((q, f), v)).toMap
 
-    if (printOption) println("            Find delta  : " + getTime())
-    val deltaMap = states.flatMap(q =>
-      sst1.δ.filter(t => t._1._1 == q._1).map(t =>
-        ((t._1._1, q._2), t._1._2) -> delta(t._1._1, q._2, t._1._2)
-      )
-    ).toMap
-    if (printOption) println("                Delta : " + deltaMap.size)
-
     if (printOption) println("            Trim states : " + getTime())
     val sMap = states.zipWithIndex.toMap
     val dMap = sMap.map(t => t._2 -> t._1)
     val dfa0: DFA[Int, A] = DFA(sMap.map(_._2).toSet, sMap(initial), deltaMap.map(t => (sMap(t._1._1), t._1._2) -> sMap(t._2)), f1.map(t => sMap(t._1)).toSet)
     val dfa = dfa0.trim
+
+    if (printOption) println("                Q     : " + dfa.states.size)
+    if (printOption) println("                Delta : " + dfa.δ.size)
 
     if (printOption) println("            Find eta    : " + getTime())
     val etaMap = dfa.δ.map(t => t._1 -> eta(dMap(t._1._1)._1, dMap(t._1._1)._2, t._1._2))
@@ -284,10 +280,7 @@ case class Composition(printOption: Boolean) {
     type Bone = Map[X, Shuffle]
     type Var = (X, Y, Int)
 
-    // TODO: we need ordering in variable set Y.
-    //       currently we use hashCode to sort it.
-    //       so the composition may differ depending on running environment.
-    val vars2: List[Y] = msst.vars2.toList.sortBy(y => y.hashCode)
+    val vars2: List[Y] = msst.vars2.toList
 
     def iota(b: Bone)(x: X): Map[Y, List[Either[Y, Either[Var, B]]]] = {
       synthesize(vars2, b(x), (y, k) => List(Left((x, y, k))))
@@ -324,8 +317,6 @@ case class Composition(printOption: Boolean) {
       }.toMap
     }
 
-    def delta(q: Q, b: Bone, a: A): (Q, Bone) = (msst.sst.δ(q, a), largeDeltaPrime(b, msst.sst.η(q, a)))
-
     def eta(q: Q, b: Bone, a: A) = largeEtaPrime(b, msst.sst.η(q, a))
 
     def final0(q: Q, b: Bone) = {
@@ -340,23 +331,26 @@ case class Composition(printOption: Boolean) {
     if (printOption) println("            Find s0     : " + getTime())
     val initial = (msst.sst.s0, (for (x <- msst.sst.vars) yield (x, Update.identityShuffle(msst.vars2))).toMap)
 
-    def searchStates: Set[(Q, Bone)] = {
-      def rec(queue: List[(Q, Bone)], openSet: Set[(Q, Bone)]): Set[(Q, Bone)] = {
+    def searchStatesAndDelta: (Set[(Q, Bone)], Map[((Q, Bone), A), (Q, Bone)]) = {
+      def rec(queue: List[(Q, Bone)], statesSet: Set[(Q, Bone)], transitionMap: Map[((Q, Bone), A), (Q, Bone)]): (Set[(Q, Bone)], Map[((Q, Bone), A), (Q, Bone)]) = {
         queue match {
           case (q :: qs) => {
-            val next = msst.sst.δ.filter(r => r._1._1 == q._1).toList.map(r => (r._2, largeDeltaPrime(q._2, msst.sst.η(q._1, r._1._2)))).filterNot(openSet(_))
-            rec(qs ::: next, openSet ++ next)
+            val transitions = msst.sst.δ.filter(r => r._1._1 == q._1).map(r => (q, r._1._2) -> (r._2, largeDeltaPrime(q._2, msst.sst.η(q._1, r._1._2))))
+            val states0 = transitions.toSet
+            val states = states0.map(r => r._2).filterNot(statesSet(_))
+            rec(qs ::: states.toList, statesSet ++ states, transitionMap ++ transitions)
           }
-          case _ => openSet
+          case _ => (statesSet, transitionMap)
         }
       }
 
-      rec(List(initial), Set(initial))
+      rec(List(initial), Set(initial), Map())
     }
 
-    if (printOption) println("            Find states : " + getTime())
-    val states: Set[(Q, Bone)] = searchStates
-    if (printOption) println("                Q : " + states.size)
+    if (printOption) println("            Find states and delta : " + getTime())
+    val (states, deltaMap) = searchStatesAndDelta
+    if (printOption) println("                Q     : " + states.size)
+    if (printOption) println("                Delta : " + deltaMap.size)
 
     if (printOption) println("            Find vars   : " + getTime())
     val vars = for (x <- msst.sst.vars; y <- msst.vars2; k <- 0 to boundedness) yield (x, y, k)
@@ -365,18 +359,14 @@ case class Composition(printOption: Boolean) {
     val f = (for ((q, f) <- states; u <- final0(q, f)) yield ((q, f), u)).toMap
 
     if (printOption) println("            Find delta  : " + getTime())
-    val deltaMap = states.flatMap(q =>
-      msst.sst.δ.filter(t => t._1._1 == q._1).map(t =>
-        ((t._1._1, q._2), t._1._2) -> delta(t._1._1, q._2, t._1._2)
-      )
-    ).toMap
-    if (printOption) println("                Delta : " + deltaMap.size)
 
     if (printOption) println("            Trim states : " + getTime())
     val sMap = states.zipWithIndex.toMap
     val dMap = sMap.map(t => t._2 -> t._1)
     val dfa0: DFA[Int, A] = DFA(sMap.map(_._2).toSet, sMap(initial), deltaMap.map(t => (sMap(t._1._1), t._1._2) -> sMap(t._2)), f.map(t => sMap(t._1)).toSet)
     val dfa = dfa0.trim
+    if (printOption) println("                Q     : " + dfa.states.size)
+    if (printOption) println("                Delta : " + dfa.δ.size)
 
     if (printOption) println("            Find eta    : " + getTime())
     val etaMap = dfa.δ.map(t => t._1 -> eta(dMap(t._1._1)._1, dMap(t._1._1)._2, t._1._2))
