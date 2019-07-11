@@ -19,7 +19,7 @@ class Token_Test extends FlatSpec {
     "(assert (str.in.re y1 (str.to.re \"a b c\")))",
     "",
     "(check-sat)"
-  )
+  ).mkString
 
   "tokens" should "run" in {
     val fb = FormulaBuilder(lines)

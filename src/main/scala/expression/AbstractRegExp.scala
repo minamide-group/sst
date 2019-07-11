@@ -8,6 +8,27 @@ trait AbstractRegExp[T, Γ] {
 
   def h(a: Γ): T
 
+  def toRegExp_d[Q](dfa : deterministic.DFA[Q, Γ]) : RegExp ={
+    val (states, q0, finialStates, delta) = (dfa.states, dfa.s0, dfa.f, dfa.δ.toSet)
+
+    finialStates.map(qf => {
+      val rules = eliminate(states.filterNot(x => x == q0).filterNot(x => x == qf).toList,
+        delta.map(x => (x._1._1, CharExp(h(x._1._2)): RegExp, x._2)))
+
+      if (q0 == qf) {
+        val A = getCombined(q0, q0, rules)
+        StarExp(A)
+      }
+      else {
+        val A = getCombined(q0, q0, rules)
+        val B = getCombined(q0, qf, rules)
+        val C = getCombined(qf, q0, rules)
+        val D = getCombined(qf, qf, rules)
+        ConcatExp(ConcatExp(StarExp(AltExp(A, ConcatExp(ConcatExp(B, StarExp(D)), C))), B), StarExp(D))
+      }
+    }).foldLeft(EmptyExp: RegExp) { (x, y) => AltExp(x, y) }
+  }
+
   def toRegExp[Q, Σ](transducer: nondeterministic.Transducer[Q, Σ, Γ]): RegExp = {
     val (states, initialStates, finialStates, delta) = (transducer.states, transducer.s0, transducer.f, transducer.δ)
 

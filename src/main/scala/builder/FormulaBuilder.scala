@@ -6,7 +6,7 @@ import formula.re._
 import formula.str._
 import formula.{Conjunction, Disjunction, Negation, ReturnBoolean}
 
-case class FormulaBuilder(lines: List[String]) {
+case class FormulaBuilder(source: String) {
 
   def output: (ReturnBoolean, Boolean) = {
 
@@ -17,8 +17,10 @@ case class FormulaBuilder(lines: List[String]) {
           val temp = parseCheckSat(tokens)
           if (temp.isEmpty)
             (p, strV, intV, true, getModel)
-          else /*if(temp(1).equals("get-model"))*/
+          else if(temp.length > 1 && temp(1).equals("get-model"))
             (p, strV, intV, true, true)
+          else
+            (p, strV, intV, true, false)
         }
         case "declare-const" => {
           val (temp, strV1, intV1) = parseDeclareConst(tokens, strV, intV)
@@ -38,7 +40,7 @@ case class FormulaBuilder(lines: List[String]) {
       }
     }
 
-    val (res, _, _, _, getModel) = loop(getTokens(lines), null, Set[String](), Set[String](), false, false)
+    val (res, _, _, _, getModel) = loop(getTokens(source), null, Set[String](), Set[String](), false, false)
     (res, getModel)
   }
 
@@ -49,9 +51,8 @@ case class FormulaBuilder(lines: List[String]) {
     "<=" -> -3
   )
 
-  def getTokens(lines: List[String]): List[String] = {
-    val source = lines.filterNot(_.isEmpty).filterNot(_.startsWith(";")).filterNot(_.toList.forall(y => y.isWhitespace))
-      .mkString.replaceAll("\\(", " ( ").replaceAll("\\)", " ) ").toList
+  def getTokens(str: String): List[String] = {
+    val source = str.replaceAll("\\(", " ( ").replaceAll("\\)", " ) ").toList
 
     def loop(quote: Boolean, source: List[Char], temp: String, res: List[String]): List[String] = {
       source match {

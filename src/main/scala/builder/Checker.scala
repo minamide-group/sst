@@ -7,22 +7,20 @@ import constraint.regular.RegCons
 import formula.atomic.IntegerEquation
 import formula.str.StrV
 
-import scala.io.Source
 import scala.sys.process._
 
-case class Checker(file: File, options: Map[String, List[String]]) {
+case class Checker(source: String, options: Map[String, List[String]]) {
 
   type Clause = (List[AtomicSLCons], Set[RegCons[Char]], Set[Char], Set[IntegerEquation], Map[StrV, Int])
-  val lines = Source.fromFile(file.getPath).getLines().toList
-  val (formula, getModel) = FormulaBuilder(lines).output
+  val (formula, getModel) = FormulaBuilder(source).output
   val clauses: List[Clause] = SLConsBuilder(formula).output
   val printOption: Boolean = options.contains("-p")
 
   def output: (Boolean, String) = {
-    loop(clauses)
+    loopCheck(clauses)
   }
 
-  def loop(clauses: List[Clause]): (Boolean, String) = {
+  def loopCheck(clauses: List[Clause]): (Boolean, String) = {
     clauses match {
       case Nil => (false, "")
       case x :: xs => {
@@ -30,7 +28,7 @@ case class Checker(file: File, options: Map[String, List[String]]) {
         if (sat)
           (sat, witness)
         else
-          loop(xs)
+          loopCheck(xs)
       }
     }
   }
@@ -56,30 +54,48 @@ case class Checker(file: File, options: Map[String, List[String]]) {
       }
     }
 
-    val (semiLinear, trans) = ParikhBuilder(sstInt, sstList, we).output
-    val z3Input = Z3InputBuilder(ie.toList, semiLinear, nameToIdx, getModel).output
-    val z3Output = executeZ3(z3Input)
+    val (parikhs, trans) = ParikhBuilder(sstInt, sstList, we).output
 
-    if (!z3Output.startsWith("sat")) {
-      return (false, "")
-    }
-    else {
-      if (getModel) {
-        val witness = WitnessBuilder(z3Output, nameToIdx, sstChar, trans, chars, split).output
-        return (true, witness)
+    def loopCheckInt(queue : List[Set[(Map[Int, Int], Set[Map[Int, Int]])]]): (Boolean, String) ={
+      queue match {
+        case Nil => return (false, "")
+        case p :: rest=>{
+          if (options.contains("-parikh")) {
+            println("=========parikh : " + p.size + "===========")
+            p.foreach(println)
+          }
+
+          val z3Input = Z3InputBuilder(ie.toList, p, nameToIdx, getModel).output
+          val z3Output = executeZ3(z3Input)
+
+          if (!z3Output.startsWith("sat"))
+            loopCheckInt(rest)
+          else {
+            if (getModel) {
+              val witness = WitnessBuilder(z3Output, nameToIdx, sstChar, trans, chars, split, sstList).output
+              (true, witness)
+            }
+            else
+              (true, "")
+          }
+        }
       }
-      else
-        return (true, "")
     }
+
+    loopCheckInt(parikhs.toList)
   }
+
+
 
   def executeZ3(input: String): String = {
     val path = System.getProperty("user.dir") + "\\temp"
 
     val file = new File(path)
 
-    if (!file.exists())
+    if (!file.exists()) {
       file.createNewFile()
+    }
+
 
     val pw = new PrintWriter(file)
     pw.write(input)
@@ -88,10 +104,13 @@ case class Checker(file: File, options: Map[String, List[String]]) {
     val output: String = try {
       ("z3 -smt2 " + path).!!
     } catch {
-      case _: Throwable => "unsat"
+      case e: Throwable => {
+        e.printStackTrace()
+        "unsat"
+      }
     }
-    file.delete()
-
+    //file.delete()
     output
   }
 }
+

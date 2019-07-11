@@ -2,6 +2,8 @@ import java.io.File
 
 import builder.Checker
 
+import scala.io.Source
+
 //java -jar checker.jar path
 object Main extends App {
 
@@ -28,7 +30,11 @@ object Main extends App {
   }
 
   def processFile(file: File, options: Map[String, List[String]]): Unit = {
-    val (res, msg) = Checker(file, options).output
+
+    val lines = Source.fromFile(file.getPath).getLines().toList
+    val str = lines.filterNot(_.isEmpty).filterNot(_.startsWith(";")).filterNot(_.toList.forall(y => y.isWhitespace)).mkString
+
+    val (res, msg) = Checker(str, options).output
 
     if (res)
       println("sat")

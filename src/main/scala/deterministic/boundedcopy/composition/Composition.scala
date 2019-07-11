@@ -139,8 +139,11 @@ case class Composition(printOption: Boolean) {
     if (printOption) println("            Find s0     : " + getTime())
     val initial = (sst1.s0, (for (q2 <- sst2.states; x <- sst1.vars) yield ((q2, x), q2)).toMap)
 
-    def searchStatesAndDelta: (Set[(Q1, Trans)], Map[((Q1, Trans), A), (Q1, Trans)]) = {
-      def rec(queue: List[(Q1, Trans)], statesSet: Set[(Q1, Trans)], transitionMap: Map[((Q1, Trans), A), (Q1, Trans)]): (Set[(Q1, Trans)], Map[((Q1, Trans), A), (Q1, Trans)]) = {
+    type State = (Q1, Trans)
+    type Transition = Map[(State, A), State]
+
+    def searchStatesAndDelta: (Set[State], Transition) = {
+      def rec(queue: List[State], statesSet: Set[State], transitionMap: Transition): (Set[State], Transition) = {
         queue match {
           case (q :: qs) => {
             val transitions = sst1.δ.filter(r => r._1._1 == q._1).map(r => (q, r._1._2) -> (r._2, largeDelta(q._2, sst1.η(q._1, r._1._2))))
@@ -155,7 +158,7 @@ case class Composition(printOption: Boolean) {
       rec(List(initial), Set(initial), Map())
     }
 
-    if (printOption) println("            Find states and delta: " + getTime())
+    if (printOption) println("            Find states : " + getTime())
     val (states, deltaMap) = searchStatesAndDelta
 
     if (printOption) println("                Q     : " + states.size)
@@ -331,8 +334,11 @@ case class Composition(printOption: Boolean) {
     if (printOption) println("            Find s0     : " + getTime())
     val initial = (msst.sst.s0, (for (x <- msst.sst.vars) yield (x, Update.identityShuffle(msst.vars2))).toMap)
 
-    def searchStatesAndDelta: (Set[(Q, Bone)], Map[((Q, Bone), A), (Q, Bone)]) = {
-      def rec(queue: List[(Q, Bone)], statesSet: Set[(Q, Bone)], transitionMap: Map[((Q, Bone), A), (Q, Bone)]): (Set[(Q, Bone)], Map[((Q, Bone), A), (Q, Bone)]) = {
+    type State = (Q, Bone)
+    type Transition = Map[(State, A), State]
+
+    def searchStatesAndDelta: (Set[State], Transition) = {
+      def rec(queue: List[State], statesSet: Set[State], transitionMap: Transition): (Set[State], Transition) = {
         queue match {
           case (q :: qs) => {
             val transitions = msst.sst.δ.filter(r => r._1._1 == q._1).map(r => (q, r._1._2) -> (r._2, largeDeltaPrime(q._2, msst.sst.η(q._1, r._1._2))))
@@ -347,7 +353,7 @@ case class Composition(printOption: Boolean) {
       rec(List(initial), Set(initial), Map())
     }
 
-    if (printOption) println("            Find states and delta : " + getTime())
+    if (printOption) println("            Find states : " + getTime())
     val (states, deltaMap) = searchStatesAndDelta
     if (printOption) println("                Q     : " + states.size)
     if (printOption) println("                Delta : " + deltaMap.size)

@@ -1,9 +1,0 @@
-sat
-(model
-  (define-fun x0 () String
-    "ba")
-  (define-fun x1 () String
-    "adsc")
-  (define-fun i () Int
-    4)
-)

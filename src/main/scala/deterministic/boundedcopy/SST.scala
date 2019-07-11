@@ -4,6 +4,7 @@ import constraint.vars.{SST_State, SST_Var}
 import deterministic.DFA
 import expression._
 import expression.regex._
+import nondeterministic.{NFA, NFA_epsilon}
 import scalaz.Monoid
 
 case class SST[Q, Σ, Γ, X](
@@ -241,7 +242,9 @@ case class SST[Q, Σ, Γ, X](
 
   }
 
-  def toParikhImage: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = {
+  def toParikhImage(trans : nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Map[Γ, Int]])
+          : Set[Set[(Map[Γ, Int], Set[Map[Γ, Int]])]] = {
+
     val alphabets: Set[Γ] = η.toList.flatMap(x => x._2.toList).flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet ++
       f.flatMap(x => x._2).filter(x => x.isRight).map(x => x.right.get).toSet
     val aToI: Map[Γ, Int] = (alphabets.toList.indices zip alphabets).toMap.map(x => x._2 -> x._1)
@@ -252,26 +255,37 @@ case class SST[Q, Σ, Γ, X](
       def zero: Map[Int, Int] = alphabets.map(c => aToI(c) -> 0).toMap
     }
 
-    val trans = toMapTransducer
-    val trans1: nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Map[Int, Int]] = nondeterministic.Transducer(
-      trans.states,
-      trans.s0,
-      trans.δ.map(r => (r._1, r._2, r._3, r._4.map(x => aToI(x._1) -> x._2))),
-      trans.f
-    )
+    val statesMap = trans.states.toList.zipWithIndex.toMap
+    val symbolMap = trans.δ.map(_._4).zipWithIndex.toMap
+    val mapSymbol = symbolMap.map(t=> t._2-> t._1)
+    val nfa_states = statesMap.values.toSet
+    val nfa_f = trans.f.map(q=> statesMap(q))
+    val nfa_q0 = trans.s0.map(q=> statesMap(q))
 
-    val r: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = MapRegExp.eval(MapRegExp.toRegExp(trans1)) match {
-      case m: MapRegExp.CharExp1 =>
-        m.c.map(x => {
-          (alphabets.map(c => c -> x._1.withDefaultValue(0)(aToI(c))).toMap,
-            x._2.filterNot(m => m.isEmpty).map(y => alphabets.map(c => c -> y.withDefaultValue(0)(aToI(c))).toMap))
-        })
-      case EmptyExp => Set()
-    }
+    val nfa_rules = trans.δ.map(r=> (statesMap(r._1), symbolMap(r._4), statesMap(r._3))).foldLeft(Map[(Int, Int), Set[Int]]()){ (s, r)=> {
+      val key = (r._1, r._2)
+      if (s.contains(key)) s + (key -> (s(key) + r._3)) else s + (key -> Set(r._3))}}
 
-    if (f.contains(s0)) r ++ Set[(Map[Γ, Int], Set[Map[Γ, Int]])]((
-      alphabets.map(c => c -> f(s0).filter(x => x.isRight).map(x => x.right.get).groupBy(identity).mapValues(_.size).withDefaultValue(0)(c)).toMap
-      , Set.empty)) else r
+    nfa_q0.map(q0=>{
+      val dfa = NFA(nfa_states, q0, nfa_rules, nfa_f).toDFA.minimize.rename
+      val rules = dfa.δ.map(r=> (r._1._1, mapSymbol(r._1._2)
+        .map(x=>aToI(x._1)->x._2) )->r._2)
+      val dfa1 = DFA(dfa.states, dfa.s0, rules, dfa.f)
+      val r1: Set[(Map[Γ, Int], Set[Map[Γ, Int]])] = MapRegExp.eval(MapRegExp.toRegExp_d(dfa1)) match {
+        case m: MapRegExp.CharExp1 =>
+          m.c.map(x => {
+            (alphabets.map(c => c -> x._1.withDefaultValue(0)(aToI(c))).toMap,
+              x._2.filterNot(m => m.isEmpty).map(y => alphabets.map(c => c -> y.withDefaultValue(0)(aToI(c))).toMap))
+          })
+        case EmptyExp => Set()
+      }
+
+      if (f.contains(s0)) r1 ++ Set[(Map[Γ, Int], Set[Map[Γ, Int]])]((
+        alphabets.map(c => c -> f(s0).filter(x => x.isRight).map(x => x.right.get).groupBy(identity).mapValues(_.size).withDefaultValue(0)(c)).toMap
+        , Set.empty))
+      else r1
+    })
+
   }
 
   def toMapTransducer: nondeterministic.Transducer[Either[(Q, Map[X, Int]), Int], Σ, Map[Γ, Int]] = {

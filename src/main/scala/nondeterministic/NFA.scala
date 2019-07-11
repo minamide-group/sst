@@ -82,32 +82,30 @@ case class NFA[Q, Σ](
   }
 
   def toDFA: DFA[Set[Q], Σ] = {
-
-    def getStatesAndDelta(res1: Set[Set[Q]],
-                          res2: Map[(Set[Q], Σ), Set[Q]],
-                          queue: List[Set[Q]],
-                          rules: Map[(Q, Σ), Set[Q]]): (Set[Set[Q]], Map[(Set[Q], Σ), Set[Q]]) = {
+    type P = Set[Q]
+    def getStatesAndDelta(res1: Set[P],
+                          res2: Map[(P, Σ), P],
+                          queue: List[P]): (Set[P], Map[(P, Σ), P]) = {
       queue match {
         case s :: rest => {
-          val newRules: Map[(Set[Q], Σ), Set[Q]] = rules.filter(r => s(r._1._1)).groupBy(_._1._2).map(t => {
-            (s, t._1) -> t._2.flatMap(r => r._2).toSet
-          }).filterNot(r => res2.contains(r._1))
+          val newRules: Map[(P, Σ), P] = δ.filter(r => s(r._1._1)).groupBy(_._1._2).map(t =>
+            (s, t._1) -> t._2.flatMap(r => r._2).toSet )
 
-          val newStates: List[Set[Q]] = newRules.map(r => r._2).filterNot(q => q == s || res1(q)).toList
+          val newStates = newRules.map(r => r._2).filterNot(q => res1(q))
 
-          getStatesAndDelta(res1 + s, res2 ++ newRules, rest ::: newStates, rules)
+          getStatesAndDelta(res1 ++ newStates, res2 ++ newRules, rest ::: newStates.toList)
         }
         case Nil => (res1, res2)
       }
     }
 
-    val (states, delta) = getStatesAndDelta(Set(), Map(), List(Set(s0)), δ)
+    val (states, delta) = getStatesAndDelta(Set(Set(s0)), Map(), List(Set(s0)))
 
     DFA(
       states,
       Set(s0),
       delta,
-      states.filterNot(s => s.intersect(f).isEmpty)
+      states.filter(s => s.intersect(f).nonEmpty)
     )
   }
 

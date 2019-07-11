@@ -1,7 +1,0 @@
-sat
-(model
-  (define-fun w () String
-    "qwertyuiasdfSDFZXC123456778")
-  (define-fun x () String
-    "qwertyuiasdfSDFZXC123456778")
-)

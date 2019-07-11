@@ -135,25 +135,16 @@ case class SSTBuilder[Σ](atomicSLCons: List[AtomicSLCons],
     val list = sstList.dropRight(1)
     val last_char = sstList.last.trim
     if (list.size == 0) {
-      if (getLength && getModel)
+      if (getLength)
         (renameToInt(last_char), last_char, last_char.states.nonEmpty)
-      else if (getLength) {
-        (renameToInt(last_char), null, last_char.states.nonEmpty)
-      }
-      else {
+      else
         (null, last_char, last_char.states.nonEmpty)
-      }
     }
     else {
       val sst0 = composeSSTs(list)
-      if (getLength && getModel) {
+      if (getLength) {
         val sst_int = compose(sst0, renameToInt(last_char))
-        val sst_char = compose(sst0, last_char)
-        (sst_int, sst_char, sst_char.states.nonEmpty)
-      }
-      else if (getLength) {
-        val sst_int = compose(sst0, renameToInt(last_char))
-        (sst_int, null, sst_int.states.nonEmpty)
+        (sst_int, sst0, sst_int.states.nonEmpty)
       }
       else {
         val sst_char = compose(sst0, last_char)

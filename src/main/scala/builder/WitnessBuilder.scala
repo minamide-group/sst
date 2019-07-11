@@ -9,13 +9,16 @@ case class WitnessBuilder(z3output: String,
                           sst_Char: SST[SST_State, Char, Char, SST_Var],
                           trans: nondeterministic.Transducer[TransState, Char, Map[Int, Int]],
                           chars: Set[Char],
-                          split: Char) {
+                          split: Char,
+                          sstList : List[SST[SST_State, Char, Char, SST_Var]] = null
+                         ) {
 
   def output: String = {
 
     val z3Witness = parse
     val idxToName = nameToIdx.map(t => t._2 -> t._1)
     val len = z3Witness.filter(t => t._1.startsWith("len_")).map(t => t._1.drop(4) -> t._2)
+    println(len)
 
     val strVLength = len.filter(t => t._1.forall(_.isDigit)).map(t => t._1.toInt -> t._2)
     val witness0 = stringWitness(strVLength).zipWithIndex.map(t => idxToName(t._2) -> t._1).map(t => toModel(t._1.name, "\"" + t._2 + "\"", "String"))
@@ -57,12 +60,17 @@ case class WitnessBuilder(z3output: String,
     }
     else {
       val sourceWitness = search(trans, strVLength)
-      sst_Char.process(sourceWitness)._3
+      if(sstList.size==1)
+        sst_Char.process(sourceWitness)._3
+      else{
+        sstList.last.process(sst_Char.process(sourceWitness)._3)._3
+      }
     }
     wholeWitness.mkString.split(split.toString, -1).toList.dropRight(1)
   }
 
   def search[Q, X](sst: SST[Q, Char, Char, X]): String = {
+    //sst.printDetail
     def bfs(queue: List[(Q, String)]): String = {
       queue match {
         case x :: xs => {
@@ -81,19 +89,26 @@ case class WitnessBuilder(z3output: String,
   }
 
   def search[Q](trans: nondeterministic.Transducer[Q, Char, Map[Int, Int]], lengths: Map[Int, Int]): String = {
-    def bfs(queue: List[(Q, String, Map[Int, Int])]): String = {
+    //println(lengths)
+    //trans.print
+    def bfs(queue: List[(Q, String, Map[Int, Int])], set : Set[(Q, Map[Int, Int])]): String = {
       queue match {
         case x :: xs => {
           val (q0, s0, m0) = x
+          //println(q0 + ", " + m0)
           if (trans.f(q0) && mapEq(m0, lengths))
             s0
-          else
-            bfs(xs ::: trans.δ.filter(r => r._1 == q0).map(r => (r._3, s0 + r._2, mapAdd(m0, r._4))).filter(t => mapLeq(t._3, lengths)).toList)
+          else{
+            val next = trans.δ.filter(r => r._1 == q0).map(r => (r._3, s0 + r._2, mapAdd(m0, r._4)))
+                          .filter(t => mapLeq(t._3, lengths)).filterNot(x=> set((x._1, x._3)))
+            bfs(xs ::: next.toList, set ++ next.map(x=> (x._1, x._3)))
+          }
         }
       }
     }
 
-    bfs(trans.s0.toList.map(q => (q, "", lengths.map(t => t._1 -> 0))))
+    val initials = trans.s0.map(q => (q, lengths.map(t => t._1 -> 0)))
+    bfs(initials.map(x=> (x._1, "", x._2)).toList, initials)
   }
 
   def mapAdd[X](map1: Map[X, Int], map2: Map[X, Int]): Map[X, Int] = {

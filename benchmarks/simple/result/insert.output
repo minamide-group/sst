@@ -1,7 +1,0 @@
-sat
-(model
-  (define-fun x0 () String
-    "")
-  (define-fun x1 () String
-    "aba")
-)

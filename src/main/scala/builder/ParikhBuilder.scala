@@ -3,26 +3,30 @@ package builder
 import constraint.atomicSL.{AtomicSLCons, Concatenation}
 import constraint.vars.{SST_State, SST_Var, TransState}
 import deterministic.boundedcopy.SST
+import nondeterministic.Transducer
 
 case class ParikhBuilder(sst: SST[SST_State, Char, Int, SST_Var],
                          sstList: List[SST[SST_State, Char, Char, SST_Var]],
                          atomicCons: List[AtomicSLCons]) {
 
-  def output: (Set[(Map[Int, Int], Set[Map[Int, Int]])],
-    nondeterministic.Transducer[TransState, Char, Map[Int, Int]]) = {
+  type SEMI = Set[(Map[Int, Int], Set[Map[Int, Int]])]
+
+  def output: (Set[SEMI], Transducer[TransState, Char, Map[Int, Int]]) = {
     //(1) there are only integer constraints, so sstList is empty
     //(2) integer constraints contain no variables of sst, in this case sst_int is not constructed
     if (sstList.isEmpty || sst == null)
       (Set(), null)
-    else
-      (getParikhImage, getTransducer)
+    else {
+      val trans = sst.toMapTransducer
+      val parikhs = sst.toParikhImage(trans).map(p => modifyParikhImage(p))
+      (parikhs, getTransducer(trans.rename))
+    }
   }
 
-  def getParikhImage: Set[(Map[Int, Int], Set[Map[Int, Int]])] = {
+  def modifyParikhImage(res0: SEMI): SEMI = {
     //Optimization : Combine regular constraint with previous atomic constraints to reduce the size of later SSTs.
     //Problem : When the last constraint is concatenation, e.x. x2 = x1x0, x2 is represented by x1 and x0
     //Solution : Compute it after Computing Parikh image.
-    val res0 = sst.toParikhImage
     if (atomicCons.isEmpty)
       return res0
     atomicCons.last match { //the last constraint is concatenation
@@ -35,8 +39,7 @@ case class ParikhBuilder(sst: SST[SST_State, Char, Int, SST_Var],
     }
   }
 
-  def getTransducer: nondeterministic.Transducer[TransState, Char, Map[Int, Int]] = {
-    val trans0 = sst.toMapTransducer.rename
+  def getTransducer(trans0: Transducer[TransState, Char, Map[Int, Int]]): Transducer[TransState, Char, Map[Int, Int]] = {
     if (atomicCons.isEmpty)
       return trans0
     atomicCons.last match { //the last constraint is concatenation
@@ -68,4 +71,5 @@ case class ParikhBuilder(sst: SST[SST_State, Char, Int, SST_Var],
   def addFinalVar(idx: Int, idxLength: Map[Int, Int], charCount: Int, varsCount: Map[Int, Int]) = {
     idxLength + (idx -> varsCount.map(t => t._2 * idxLength(t._1)).foldLeft(charCount) { (x, y) => x + y })
   }
+
 }
