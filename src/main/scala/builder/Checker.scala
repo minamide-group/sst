@@ -105,7 +105,7 @@ case class Checker(source: String, options: Map[String, List[String]]) {
       ("z3 -smt2 " + path).!!
     } catch {
       case e: Throwable => {
-        e.printStackTrace()
+        //e.printStackTrace()
         "unsat"
       }
     }

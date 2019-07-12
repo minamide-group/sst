@@ -178,3 +178,7 @@ sat
 )
 ```
 
+### Print Parikh:
+```
+checker substr.smt2 -parikh
+```

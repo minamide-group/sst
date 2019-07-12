@@ -18,7 +18,6 @@ case class WitnessBuilder(z3output: String,
     val z3Witness = parse
     val idxToName = nameToIdx.map(t => t._2 -> t._1)
     val len = z3Witness.filter(t => t._1.startsWith("len_")).map(t => t._1.drop(4) -> t._2)
-    println(len)
 
     val strVLength = len.filter(t => t._1.forall(_.isDigit)).map(t => t._1.toInt -> t._2)
     val witness0 = stringWitness(strVLength).zipWithIndex.map(t => idxToName(t._2) -> t._1).map(t => toModel(t._1.name, "\"" + t._2 + "\"", "String"))
